@@ -8,9 +8,9 @@ interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'className'> {
 }
 
 const variants = {
-  primary: 'bg-blue-500 text-white hover:bg-blue-400',
-  secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
-  ghost: 'bg-transparent border border-slate-700 text-slate-200 hover:border-slate-500',
+  primary: 'bg-blue-600 text-white hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400',
+  secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700',
+  ghost: 'bg-transparent border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800/70',
 };
 
 export default function Button({ children, variant = 'primary', className = '', ...props }: ButtonProps) {

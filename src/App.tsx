@@ -9,13 +9,16 @@ import ThemeToggle from './components/ThemeToggle';
 
 function App() {
   const location = useLocation();
+  const isLanding = location.pathname === '/';
 
   return (
     <InterviewProvider>
-      <div className="min-h-screen bg-[#080b16] text-slate-100">
-        <div className="fixed right-6 top-6 z-50">
-          <ThemeToggle />
-        </div>
+      <div className="min-h-screen bg-transparent text-slate-900 transition-colors duration-300 dark:text-slate-100">
+        {!isLanding && (
+          <div className="fixed right-4 top-4 z-50 sm:right-6 sm:top-6">
+            <ThemeToggle />
+          </div>
+        )}
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route

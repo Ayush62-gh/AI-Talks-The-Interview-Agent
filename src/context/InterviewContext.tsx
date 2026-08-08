@@ -50,6 +50,7 @@ const initialSessionState = (): PersistedInterviewState => {
       interviewCompleted: false,
       feedback: null,
       sessionStartedAt: null,
+      sessionData: null,
     };
   }
 
@@ -66,6 +67,7 @@ const initialSessionState = (): PersistedInterviewState => {
         interviewCompleted: false,
         feedback: null,
         sessionStartedAt: null,
+        sessionData: null,
       };
     }
     return JSON.parse(stored) as PersistedInterviewState;
@@ -80,6 +82,7 @@ const initialSessionState = (): PersistedInterviewState => {
       interviewCompleted: false,
       feedback: null,
       sessionStartedAt: null,
+      sessionData: null,
     };
   }
 };
@@ -160,7 +163,7 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
         ]);
         saveInterviewSession(session);
       } catch (err) {
-        setError('Unable to initialize the interview. Please try again.');
+        setError('Unable to connect to the interview server. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -208,7 +211,7 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
           appendMessage({ id: `${Date.now()}-ai`, sender: 'ai', text: response.nextQuestion.text, timestamp: new Date().toISOString() });
         }
       } catch (err) {
-        setError('There was a problem sending your answer. Retry to continue.');
+        setError('Unable to connect to the interview server. Please try again.');
       } finally {
         setLoading(false);
       }

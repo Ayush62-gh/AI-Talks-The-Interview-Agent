@@ -13,20 +13,29 @@ interface LocationState {
 export default function CompletePage() {
   const location = useLocation();
   const state = location.state as LocationState | null;
-  const { feedback: fallbackFeedback, restartInterview } = useInterview();
+  const { feedback: fallbackFeedback, restartInterview, sessionId } = useInterview();
   const feedback = state?.feedback ?? fallbackFeedback;
 
   const [remote, setRemote] = useState<InterviewFeedback | null>(null);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If feedback is not provided, fetch placeholder structured feedback
-    if (!feedback) {
+    if (!feedback && sessionId) {
       (async () => {
-        const fetched = await getInterviewFeedback(state?.feedback ? state.feedback.summary : '');
-        setRemote(fetched);
+        setRemoteLoading(true);
+        setRemoteError(null);
+        try {
+          const fetched = await getInterviewFeedback(sessionId);
+          setRemote(fetched);
+        } catch {
+          setRemoteError('Unable to retrieve feedback from the interview server.');
+        } finally {
+          setRemoteLoading(false);
+        }
       })();
     }
-  }, [feedback, state]);
+  }, [feedback, sessionId]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 sm:px-10">
@@ -36,7 +45,7 @@ export default function CompletePage() {
             <p className="text-sm uppercase tracking-[0.28em] text-sky-300">Interview completed</p>
             <h1 className="mt-4 text-4xl font-semibold text-white">You’ve reached the end of the session.</h1>
             <p className="mt-3 max-w-2xl text-slate-300">
-              The summary below is driven by the API response. Replace the mock service with your backend and the page remains unchanged.
+              The summary below is driven by the backend feedback response. The UI stays unchanged while the data comes from the API.
             </p>
           </div>
 
@@ -44,7 +53,7 @@ export default function CompletePage() {
             <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-6">
               <h2 className="text-lg font-semibold text-white">Summary</h2>
               <p className="mt-4 text-sm leading-6 text-slate-300">
-                {feedback?.summary ?? remote?.summary ?? 'No summary available yet.'}
+                {remoteLoading ? 'Fetching feedback…' : remoteError ? remoteError : feedback?.summary ?? remote?.summary ?? 'No summary available yet.'}
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-6">

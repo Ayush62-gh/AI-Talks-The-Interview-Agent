@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {
   InterviewConfig,
   InterviewQuestion,
@@ -6,75 +7,59 @@ import {
   InterviewFeedback,
 } from '../types/interview';
 
-const FAKE_QUESTIONS = [
-  'Explain the difference between REST API and GraphQL.',
-  'How would you design a scalable notification system?',
-  'Describe a time you resolved a production incident.',
-  'How do you ensure accessibility in a frontend application?',
-  'What are the benefits of containerization for CI/CD?',
-];
+const apiBaseUrl = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api';
 
-const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const createFeedback = (): InterviewFeedback => ({
-  score: 87,
-  summary: 'Your interview session showed strong technical reasoning and thoughtful answers with room to strengthen architecture details.',
-  categories: {
-    technicalKnowledge: 88,
-    problemSolving: 86,
-    communicationSkills: 84,
-    answerQuality: 88,
-    confidence: 86,
-  },
-  strengths: ['Structured problem-solving', 'Clear explanations', 'Good collaboration mindset'],
-  weaknesses: ['More concrete metrics', 'Deeper discussion of trade-offs', 'Stronger testing details'],
-  suggestions: ['Practice system design case studies', 'Frame answers with STAR', 'Review API versioning patterns'],
-});
-
-const createQuestion = (index: number): InterviewQuestion => ({
-  questionId: `q-${index}`,
-  text: FAKE_QUESTIONS[(index - 1) % FAKE_QUESTIONS.length],
+const apiClient = axios.create({
+  baseURL: apiBaseUrl,
+  timeout: 10000,
 });
 
 export async function startInterview(config: InterviewConfig): Promise<StartInterviewResponse> {
-  await delay(1200);
+  const { data } = await apiClient.post<StartInterviewResponse>('/interview/start', {
+    role: config.role,
+    experienceLevel: config.experienceLevel,
+    interviewType: config.interviewType,
+    questionCount: config.questionCount,
+  });
+
   return {
-    sessionId: `INT-${Date.now().toString().slice(-8).toUpperCase()}`,
-    firstQuestion: createQuestion(1),
-    progress: 1,
-    totalQuestions: config.questionCount,
+    sessionId: data.sessionId,
+    firstQuestion: data.firstQuestion,
+    progress: data.progress ?? 1,
+    totalQuestions: data.totalQuestions ?? config.questionCount,
   };
 }
 
 export async function submitAnswer(sessionId: string, questionId: string, answer: string): Promise<SubmitAnswerResponse> {
-  await delay(1400);
-  const currentIndex = Number(questionId.replace('q-', '')) || 1;
-  const nextIndex = currentIndex + 1;
-  const isDone = nextIndex > 5;
-
-  if (!answer.trim()) {
-    return {
-      done: false,
-      progress: currentIndex,
-    };
-  }
-
-  if (isDone) {
-    return {
-      done: true,
-      progress: currentIndex,
-      feedback: createFeedback(),
-    };
-  }
+  const { data } = await apiClient.post<SubmitAnswerResponse>('/interview/answer', {
+    sessionId,
+    questionId,
+    answer,
+  });
 
   return {
-    done: false,
-    nextQuestion: createQuestion(nextIndex),
-    progress: nextIndex,
+    ...data,
+    progress: data.progress ?? 1,
   };
 }
 
 export async function fetchInterviewFeedback(sessionId: string): Promise<InterviewFeedback> {
-  await delay(800);
-  return createFeedback();
+  const { data } = await apiClient.get<InterviewFeedback | Record<string, unknown>>(
+    `/interview/${encodeURIComponent(sessionId)}/feedback`,
+  );
+
+  return {
+    score: Number((data as Record<string, unknown>).score ?? (data as Record<string, unknown>).overallScore ?? 0),
+    summary: String((data as Record<string, unknown>).summary ?? ''),
+    categories: {
+      technicalKnowledge: Number((data as Record<string, unknown>).technicalKnowledge ?? (data as Record<string, unknown>).technicalScore ?? 0),
+      problemSolving: Number((data as Record<string, unknown>).problemSolving ?? (data as Record<string, unknown>).problemSolvingScore ?? 0),
+      communicationSkills: Number((data as Record<string, unknown>).communicationSkills ?? (data as Record<string, unknown>).communicationScore ?? 0),
+      answerQuality: Number((data as Record<string, unknown>).answerQuality ?? (data as Record<string, unknown>).answerQualityScore ?? 0),
+      confidence: Number((data as Record<string, unknown>).confidence ?? (data as Record<string, unknown>).confidenceScore ?? 0),
+    },
+    strengths: Array.isArray((data as Record<string, unknown>).strengths) ? ((data as Record<string, unknown>).strengths as string[]) : [],
+    weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? ((data as Record<string, unknown>).weaknesses as string[]) : [],
+    suggestions: Array.isArray((data as Record<string, unknown>).suggestions) ? ((data as Record<string, unknown>).suggestions as string[]) : [],
+  };
 }

@@ -4,25 +4,25 @@ const STORAGE_KEY = 'aiInterviewTheme';
 
 export type ThemeMode = 'dark' | 'light';
 
+function getSystemTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 export function useTheme() {
   const [mode, setMode] = useState<ThemeMode>(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
-      return (stored as ThemeMode) || 'dark';
+      return (stored as ThemeMode) || getSystemTheme();
     } catch {
-      return 'dark';
+      return getSystemTheme();
     }
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (mode === 'dark') {
-      root.classList.remove('light');
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    }
+    root.classList.toggle('dark', mode === 'dark');
+    root.classList.toggle('light', mode === 'light');
     try {
       window.localStorage.setItem(STORAGE_KEY, mode);
     } catch {}
