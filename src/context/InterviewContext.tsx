@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { InterviewConfig, InterviewFeedback, InterviewQuestion, Message, InterviewFullSession } from '../types/interview';
+import { InterviewConfig, InterviewFeedback, InterviewQuestion, Message, InterviewFullSession, InterviewTopicMetadata } from '../types/interview';
 import * as api from '../services/api';
 import { createInterviewSession, loadInterviewSession, saveInterviewSession } from '../services/session';
 
@@ -37,6 +37,35 @@ interface PersistedInterviewState {
 
 const InterviewContext = createContext<InterviewContextValue | undefined>(undefined);
 const STORAGE_KEY = 'aiInterviewSessionState';
+
+const fallbackTopicMetadata = (step: number): InterviewTopicMetadata => {
+  const topics: InterviewTopicMetadata[] = [
+    { day: 7, topic: 'Embeddings', module: 'AI Foundations', difficulty: 'Medium' },
+    { day: 12, topic: 'RAG', module: 'AI Foundations', difficulty: 'Medium' },
+    { day: 23, topic: 'MCP', module: 'AI Systems', difficulty: 'Hard' },
+    { day: 28, topic: 'Deployment', module: 'Production AI', difficulty: 'Medium' },
+  ];
+
+  return topics[(step - 1) % topics.length];
+};
+
+const createMessage = (
+  sender: Message['sender'],
+  text: string,
+  type: Message['type'],
+  metadata?: InterviewTopicMetadata,
+  isFollowUp = false,
+): Message => ({
+  id: `${Date.now()}-${sender}`,
+  sender,
+  text,
+  timestamp: new Date().toISOString(),
+  type,
+  day: metadata?.day,
+  topic: metadata?.topic,
+  difficulty: metadata?.difficulty,
+  isFollowUp,
+});
 
 const initialSessionState = (): PersistedInterviewState => {
   if (typeof window === 'undefined') {
@@ -152,15 +181,9 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
         setTotalQuestions(session.questionCount);
         setQuestionNumber(1);
         const first = session.questions[0];
-        setCurrentQuestion({ questionId: first.id, text: first.question });
-        setMessages([
-          {
-            id: `${Date.now()}-ai`,
-            sender: 'ai',
-            text: first.question,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+        const initialMetadata = fallbackTopicMetadata(1);
+        setCurrentQuestion({ questionId: first.id, text: first.question, metadata: initialMetadata });
+        setMessages([createMessage('ai', first.question, 'question', initialMetadata, false)]);
         saveInterviewSession(session);
       } catch (err) {
         setError('Unable to connect to the interview server. Please try again.');
@@ -179,7 +202,7 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(true);
       setError(null);
-      appendMessage({ id: `${Date.now()}-candidate`, sender: 'candidate', text: answer, timestamp: new Date().toISOString() });
+      appendMessage(createMessage('candidate', answer, 'answer'));
 
       try {
         // store locally
@@ -205,10 +228,15 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (response.nextQuestion) {
-          setCurrentQuestion(response.nextQuestion);
+        const nextText = response.nextQuestion?.text ?? response.reply ?? '';
+        if (nextText) {
+          const nextMetadata = response.nextQuestion?.metadata ?? fallbackTopicMetadata(questionNumber + 1);
+          const followUp = questionNumber > 0;
+          setCurrentQuestion({ ...(response.nextQuestion ?? { questionId: `${Date.now()}-next`, text: nextText }), metadata: nextMetadata });
+          appendMessage(createMessage('ai', nextText, followUp ? 'followup' : 'question', nextMetadata, followUp));
+        }
+        if (response.progress) {
           setQuestionNumber(response.progress);
-          appendMessage({ id: `${Date.now()}-ai`, sender: 'ai', text: response.nextQuestion.text, timestamp: new Date().toISOString() });
         }
       } catch (err) {
         setError('Unable to connect to the interview server. Please try again.');

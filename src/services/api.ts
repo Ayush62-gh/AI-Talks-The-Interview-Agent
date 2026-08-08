@@ -15,30 +15,50 @@ const apiClient = axios.create({
 });
 
 export async function startInterview(config: InterviewConfig): Promise<StartInterviewResponse> {
-  const { data } = await apiClient.post<StartInterviewResponse>('/interview/start', {
-    role: config.role,
-    experienceLevel: config.experienceLevel,
-    interviewType: config.interviewType,
-    questionCount: config.questionCount,
+  const { data } = await apiClient.post<StartInterviewResponse>('/interview', {
+    sessionId: '',
+    candidate: {
+      role: config.role,
+      experienceLevel: config.experienceLevel,
+      interviewType: config.interviewType,
+      questionCount: config.questionCount,
+    },
   });
+
+  const initialReply = data.reply || data.firstQuestion?.text || '';
 
   return {
     sessionId: data.sessionId,
-    firstQuestion: data.firstQuestion,
+    firstQuestion: initialReply
+      ? {
+          questionId: data.firstQuestion?.questionId ?? 'initial-question',
+          text: initialReply,
+        }
+      : data.firstQuestion,
     progress: data.progress ?? 1,
     totalQuestions: data.totalQuestions ?? config.questionCount,
+    reply: initialReply,
+    done: data.done ?? false,
+    feedback: data.feedback,
   };
 }
 
 export async function submitAnswer(sessionId: string, questionId: string, answer: string): Promise<SubmitAnswerResponse> {
-  const { data } = await apiClient.post<SubmitAnswerResponse>('/interview/answer', {
+  const { data } = await apiClient.post<SubmitAnswerResponse>('/interview', {
     sessionId,
-    questionId,
-    answer,
+    message: answer,
   });
+
+  const reply = data.reply || data.nextQuestion?.text || '';
 
   return {
     ...data,
+    nextQuestion: reply
+      ? {
+          questionId: data.nextQuestion?.questionId ?? `follow-up-${Date.now()}`,
+          text: reply,
+        }
+      : data.nextQuestion,
     progress: data.progress ?? 1,
   };
 }

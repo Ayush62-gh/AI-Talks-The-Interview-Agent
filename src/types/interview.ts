@@ -48,23 +48,38 @@ export interface InterviewFullSession {
   createdAt: string;
 }
 
+export type InterviewDifficulty = 'Easy' | 'Medium' | 'Hard';
+
+export interface InterviewTopicMetadata {
+  day: number;
+  topic: string;
+  module: string;
+  difficulty: InterviewDifficulty;
+  isFollowUp?: boolean;
+}
+
 export interface InterviewQuestion {
   questionId: string;
   text: string;
+  metadata?: InterviewTopicMetadata;
 }
 
 export interface StartInterviewResponse {
-  sessionId: string;
-  firstQuestion: InterviewQuestion;
-  progress: number;
-  totalQuestions: number;
+  sessionId?: string;
+  firstQuestion?: InterviewQuestion;
+  progress?: number;
+  totalQuestions?: number;
+  reply?: string;
+  done?: boolean;
+  feedback?: InterviewFeedback;
 }
 
 export interface SubmitAnswerResponse {
   nextQuestion?: InterviewQuestion;
   done: boolean;
-  progress: number;
+  progress?: number;
   feedback?: InterviewFeedback;
+  reply?: string;
 }
 
 export interface InterviewFeedback {
@@ -87,4 +102,9 @@ export interface Message {
   sender: 'ai' | 'candidate';
   text: string;
   timestamp: string;
+  type?: 'question' | 'followup' | 'answer';
+  day?: number;
+  topic?: string;
+  difficulty?: InterviewDifficulty;
+  isFollowUp?: boolean;
 }
