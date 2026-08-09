@@ -1,4 +1,3 @@
-# AI Activity Log
 
 # AI Activity Log & Technical Architecture Report
 
