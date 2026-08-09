@@ -175,23 +175,96 @@ const roleFallbackBanks: Record<string, string[]> = {
     "How do you conduct constructive code reviews and manage semantic API versioning (SemVer) without breaking existing consumers?",
   ],
   'AI Engineer': [
-    "How do vector embeddings transform text into dense vector spaces, and how do vector databases like Qdrant or Pinecone perform similarity search using HNSW indexes?",
-    "What is the difference between tokens and characters in LLMs, and how does Byte-Pair Encoding (BPE) impact tokenization efficiency?",
-    "How do System Instructions differ from User Prompts, and how do you enforce strict persona steering in production AI systems?",
-    "What is the difference between Few-Shot Prompting and Chain-of-Thought (CoT) reasoning, and when would you combine them?",
-    "How do you guarantee valid JSON output from an LLM using schemas (Pydantic / Zod) or native JSON Mode?",
-    "How do context window limits affect multi-turn chat applications, and what strategies prevent state truncation?",
-    "What are the trade-offs between fixed-size chunking with overlap versus semantic chunking in document ingestion pipelines?",
-    "Compare Dense Retrieval (embeddings) with Sparse Retrieval (BM25). What are the strengths of hybrid search?",
-    "Why do we place a Cross-Encoder Reranker after initial vector retrieval, and how does it improve context precision?",
-    "How do evaluation frameworks like Ragas measure Context Precision, Faithfulness, and Answer Relevance to detect hallucinations?",
-    "Explain the ReAct (Reasoning + Acting) agent pattern. How does the thought-action-observation loop operate?",
-    "How does native LLM Function Calling work under the hood, and how does the model select which tool to execute?",
-    "What is the Model Context Protocol (MCP), and how does it standardize client-server AI system integrations?",
-    "How do you protect production AI systems against Indirect Prompt Injection using Guardrails and Output Filters?",
-    "Compare high-throughput LLM serving engines like vLLM and Ollama. How does PagedAttention optimize memory usage?",
+    "Retrieval-Augmented Generation (RAG): How do dense vector embeddings and sparse retrieval (BM25) combine in Hybrid Search using Reciprocal Rank Fusion (RRF) to improve context retrieval recall?",
+    "Retrieval-Augmented Generation (RAG): How does placing a Cross-Encoder Reranker after initial vector retrieval improve context precision and reduce LLM hallucinations?",
+    "Vector Databases: How does an Approximate Nearest Neighbor (ANN) index like HNSW optimize vector similarity search in Vector Databases (Pinecone/Qdrant/Chroma), and how does pre-filtering payload metadata operate?",
+    "Vector Databases: Compare cosine similarity, dot product, and Euclidean distance metric choices when storing dense document embeddings in Vector Databases.",
+    "Prompt Engineering: What is the difference between Few-Shot Prompting and Chain-of-Thought (CoT) reasoning, and how do you guarantee structured JSON outputs using schema validation (Pydantic / Zod)?",
+    "Prompt Engineering: How do System Instructions differ from User Prompts, and how do you enforce strict persona steering and output guardrails in production LLMs?",
+    "Agentic AI: Explain the ReAct (Reasoning + Acting) agent pattern. How does the thought-action-observation loop operate in autonomous agentic workflows?",
+    "Agentic AI: How does native LLM Function Calling work under the hood, and how do stateful graph frameworks (LangGraph) manage agent state persistence and human-in-the-loop approvals?",
+    "Model Context Protocol (MCP): What is the Model Context Protocol (MCP), and how does it standardize client-server communication between LLM applications and external tools or resource servers?",
+    "Model Context Protocol (MCP): How do you design and secure an MCP Server using stdio or SSE transports to safely expose custom database tools and command handlers to AI clients?",
+    "AI Deployment: Compare high-throughput LLM serving engines like vLLM and Ollama. How does PagedAttention optimize GPU memory allocation during batch inference?",
+    "AI Deployment: What techniques optimize LLM inference latency in production, such as speculative decoding, prompt caching, and model quantization (LoRA, QLoRA, GGUF)?",
+    "Production AI Systems: How do evaluation frameworks like Ragas measure Context Precision, Faithfulness, and Answer Relevance to evaluate production RAG systems?",
+    "Production AI Systems: How do you protect production AI applications against Indirect Prompt Injection attacks using input sanitization, NeMo Guardrails, and real-time output filtering?",
   ],
 };
+
+export function evaluateAnswerQuality(questionText: string, answerText: string, role: string): { score: number; feedbackText: string; isWrong: boolean } {
+  const clean = (answerText || '').trim().toLowerCase();
+  const wordCount = clean.split(/\s+/).filter(Boolean).length;
+
+  // 1. Anti-gaming / Filler / Empty / Nonsense check
+  const fillerWords = new Set(['idk', "i don't know", 'dunno', 'test', 'asdf', 'asdfghjkl', 'whatever', 'abcd', '123', 'hello', 'hi', 'ok', 'okay', 'yes', 'no']);
+  if (clean.length === 0 || fillerWords.has(clean) || (wordCount < 3 && !clean.includes('rag') && !clean.includes('sql') && !clean.includes('jvm') && !clean.includes('mcp') && !clean.includes('api'))) {
+    return {
+      score: 15,
+      isWrong: true,
+      feedbackText: 'Answer was incorrect or contained non-technical filler text.',
+    };
+  }
+
+  // 2. Anti-prompt injection check
+  if (/ignore (previous|all) (instructions|rules)/i.test(clean) || /give (me|100) (marks|points|score)/i.test(clean)) {
+    return {
+      score: 10,
+      isWrong: true,
+      feedbackText: 'Prompt override attempt detected. Score penalized.',
+    };
+  }
+
+  // 3. Technical keyword extraction based on question and role
+  const keyTermsMap: Record<string, string[]> = {
+    'rag': ['vector', 'embedding', 'retrieval', 'chunk', 'search', 'context', 'document', 'rrf', 'bm25', 'rerank', 'hybrid', 'fusion'],
+    'vector': ['hnsw', 'ann', 'distance', 'cosine', 'similarity', 'index', 'pinecone', 'qdrant', 'chroma', 'embedding', 'filter'],
+    'prompt': ['instruction', 'schema', 'pydantic', 'zod', 'few-shot', 'chain-of-thought', 'cot', 'system', 'json', 'persona', 'guardrail'],
+    'agent': ['react', 'tool', 'action', 'observation', 'loop', 'langgraph', 'state', 'function calling', 'agentic', 'workflow', 'memory'],
+    'mcp': ['protocol', 'server', 'client', 'stdio', 'sse', 'uri', 'tool', 'resource', 'prompt', 'integration'],
+    'deployment': ['vllm', 'ollama', 'pagedattention', 'quantization', 'lora', 'gguf', 'inference', 'latency', 'speculative', 'gpu'],
+    'production': ['ragas', 'faithfulness', 'precision', 'relevance', 'hallucination', 'guardrail', 'injection', 'eval', 'nemo', 'filter'],
+    'java': ['jvm', 'heap', 'stack', 'garbage collection', 'hashmap', 'synchronized', 'spring', 'jpa', 'hibernate', 'transactional', 'virtual thread', 'kafka'],
+    'frontend': ['event loop', 'virtual dom', 'reconciliation', 'hooks', 'state', 'vite', 'webpack', 'typescript', 'cors', 'xss', 'lcp', 'rsc', 'next.js'],
+    'data analyst': ['sql', 'join', 'group by', 'window function', 'row_number', 'pandas', 'p-value', 'star schema', 'outlier', 'cohort', 'cte'],
+    'devops': ['docker', 'kubernetes', 'k8s', 'pod', 'ci/cd', 'canary', 'terraform', 'prometheus', 'grafana', 'iam', 'argocd', 'vault', 'sre'],
+    'software engineer': ['complexity', 'big o', 'solid', 'scalability', 'sql', 'nosql', 'rest', 'grpc', 'cap theorem', 'pattern', 'testing', 'caching'],
+  };
+
+  const lowerQ = (questionText || '').toLowerCase();
+  let targetKeywords: string[] = ['technical', 'system', 'architecture', 'design', 'implementation'];
+  for (const [key, keywords] of Object.entries(keyTermsMap)) {
+    if (lowerQ.includes(key) || role.toLowerCase().includes(key)) {
+      targetKeywords = targetKeywords.concat(keywords);
+    }
+  }
+
+  const matchedKeywords = targetKeywords.filter((word) => clean.includes(word));
+  const uniqueMatches = Array.from(new Set(matchedKeywords));
+
+  if (uniqueMatches.length === 0) {
+    return {
+      score: 25,
+      isWrong: true,
+      feedbackText: 'Answer lacked required technical terminology for this specific question.',
+    };
+  }
+
+  if (uniqueMatches.length === 1 && wordCount < 10) {
+    return {
+      score: 55,
+      isWrong: false,
+      feedbackText: `Partially correct. Mentioned ${uniqueMatches[0]}, but missing architectural details.`,
+    };
+  }
+
+  const calculatedScore = Math.min(96, Math.max(75, 70 + uniqueMatches.length * 6 + Math.min(10, wordCount)));
+  return {
+    score: calculatedScore,
+    isWrong: false,
+    feedbackText: `Excellent explanation covering ${uniqueMatches.slice(0, 3).join(', ')}.`,
+  };
+}
 
 function getFallbackNextQuestion(role: string, askedQuestions: string[], currentIdx: number): string {
   const bank = roleFallbackBanks[role] || roleFallbackBanks['AI Engineer'];
@@ -200,6 +273,83 @@ function getFallbackNextQuestion(role: string, askedQuestions: string[], current
     return unasked[0];
   }
   return bank[(currentIdx - 1) % bank.length];
+}
+
+export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engineer'): InterviewFeedback {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem('aiInterviewFullSession') : null;
+    if (raw) {
+      const s = JSON.parse(raw);
+      const questions: any[] = s.questions || [];
+      const answers: Record<string, string> = s.answers || {};
+
+      let totalScore = 0;
+      let evaluatedCount = 0;
+      const strengths: string[] = [];
+      const weaknesses: string[] = [];
+
+      questions.forEach((q) => {
+        const ans = answers[q.id] || q.answer || '';
+        if (ans) {
+          const evalRes = evaluateAnswerQuality(q.question || '', ans, roleName);
+          totalScore += evalRes.score;
+          evaluatedCount++;
+          if (evalRes.isWrong) {
+            weaknesses.push(`Struggled with ${q.question?.slice(0, 40)}...`);
+          } else {
+            strengths.push(`Good technical knowledge on ${q.question?.slice(0, 40)}...`);
+          }
+        }
+      });
+
+      if (evaluatedCount > 0) {
+        const finalScore = Math.round(totalScore / s.questionCount || evaluatedCount);
+        const techScore = Math.min(100, Math.max(10, finalScore + 2));
+        const probScore = Math.min(100, Math.max(10, finalScore - 2));
+        const commScore = Math.min(100, Math.max(10, finalScore + 1));
+
+        return {
+          score: finalScore,
+          summary:
+            finalScore >= 75
+              ? `Strong Interview Performance (${finalScore}/100): Candidate demonstrated solid technical understanding across target role domains.`
+              : finalScore >= 50
+              ? `Average Interview Performance (${finalScore}/100): Candidate showed basic familiarity with role concepts but missed advanced architectural trade-offs.`
+              : `Needs Improvement (${finalScore}/100): Candidate submitted multiple incorrect, filler, or unverified responses across technical questions.`,
+          categories: {
+            technicalKnowledge: techScore,
+            problemSolving: probScore,
+            communicationSkills: commScore,
+            answerQuality: finalScore,
+            confidence: finalScore,
+          },
+          strengths: strengths.length > 0 ? Array.from(new Set(strengths)).slice(0, 4) : ['Attempted all interview questions'],
+          weaknesses: weaknesses.length > 0 ? Array.from(new Set(weaknesses)).slice(0, 4) : ['Could provide deeper architectural depth'],
+          suggestions: [
+            `Review core ${roleName} technical concepts and production patterns`,
+            'Practice structured technical reasoning with concrete architectural examples',
+          ],
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Error calculating session feedback:', err);
+  }
+
+  return {
+    score: 45,
+    summary: 'Incomplete or unverified response data. Candidate requires further technical review.',
+    categories: {
+      technicalKnowledge: 45,
+      problemSolving: 40,
+      communicationSkills: 50,
+      answerQuality: 45,
+      confidence: 45,
+    },
+    strengths: ['Started session setup'],
+    weaknesses: ['Did not complete sufficient verified technical answers'],
+    suggestions: ['Complete all questions with detailed technical answers'],
+  };
 }
 
 export async function submitAnswer(
@@ -234,7 +384,7 @@ export async function submitAnswer(
     const isDone = Boolean(data.done) || dataProgress >= total || currentIdx >= total;
 
     if (isDone) {
-      const feedbackPayload = data.feedback || (await fetchInterviewFeedback(sessionId));
+      const feedbackPayload = data.feedback || generateDynamicFeedbackFromSession(role);
       return {
         nextQuestion: null,
         reply: 'Interview completed successfully!',
@@ -262,7 +412,7 @@ export async function submitAnswer(
     const isDone = currentIdx >= total || nextIdx > total;
 
     if (isDone) {
-      const fallbackFeedback = await fetchInterviewFeedback(sessionId);
+      const fallbackFeedback = generateDynamicFeedbackFromSession(role);
       return {
         nextQuestion: null,
         reply: 'Interview completed successfully!',
@@ -293,41 +443,21 @@ export async function fetchInterviewFeedback(sessionId: string): Promise<Intervi
     );
 
     return {
-      score: Number((data as Record<string, unknown>).score ?? (data as Record<string, unknown>).overallScore ?? 85),
-      summary: String((data as Record<string, unknown>).summary ?? 'Solid interview performance showing strong role knowledge and clear problem solving reasoning.'),
+      score: Number((data as Record<string, unknown>).score ?? (data as Record<string, unknown>).overallScore ?? 50),
+      summary: String((data as Record<string, unknown>).summary ?? 'Interview assessment report.'),
       categories: {
-        technicalKnowledge: Number((data as Record<string, unknown>).technicalKnowledge ?? (data as Record<string, unknown>).technicalScore ?? 88),
-        problemSolving: Number((data as Record<string, unknown>).problemSolving ?? (data as Record<string, unknown>).problemSolvingScore ?? 84),
-        communicationSkills: Number((data as Record<string, unknown>).communicationSkills ?? (data as Record<string, unknown>).communicationScore ?? 86),
-        answerQuality: Number((data as Record<string, unknown>).answerQuality ?? (data as Record<string, unknown>).answerQualityScore ?? 85),
-        confidence: Number((data as Record<string, unknown>).confidence ?? (data as Record<string, unknown>).confidenceScore ?? 87),
+        technicalKnowledge: Number((data as Record<string, unknown>).technicalKnowledge ?? (data as Record<string, unknown>).technicalScore ?? 50),
+        problemSolving: Number((data as Record<string, unknown>).problemSolving ?? (data as Record<string, unknown>).problemSolvingScore ?? 50),
+        communicationSkills: Number((data as Record<string, unknown>).communicationSkills ?? (data as Record<string, unknown>).communicationScore ?? 50),
+        answerQuality: Number((data as Record<string, unknown>).answerQuality ?? (data as Record<string, unknown>).answerQualityScore ?? 50),
+        confidence: Number((data as Record<string, unknown>).confidence ?? (data as Record<string, unknown>).confidenceScore ?? 50),
       },
-      strengths: Array.isArray((data as Record<string, unknown>).strengths) ? ((data as Record<string, unknown>).strengths as string[]) : ['Strong grasp of role fundamentals', 'Clear technical communication'],
-      weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? ((data as Record<string, unknown>).weaknesses as string[]) : ['Can provide deeper architectural trade-off comparisons'],
-      suggestions: Array.isArray((data as Record<string, unknown>).suggestions) ? ((data as Record<string, unknown>).suggestions as string[]) : ['Practice edge case debugging scenarios'],
+      strengths: Array.isArray((data as Record<string, unknown>).strengths) ? ((data as Record<string, unknown>).strengths as string[]) : ['Role technical concepts'],
+      weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? ((data as Record<string, unknown>).weaknesses as string[]) : ['Architectural trade-offs'],
+      suggestions: Array.isArray((data as Record<string, unknown>).suggestions) ? ((data as Record<string, unknown>).suggestions as string[]) : ['Review core domain topics'],
     };
   } catch (error) {
-    console.warn('Backend API fetchInterviewFeedback failed, utilizing client fallback mode:', error);
-    return {
-      score: 86,
-      summary: 'Solid performance across technical fundamentals, system design reasoning, and clear candidate communication.',
-      categories: {
-        technicalKnowledge: 88,
-        problemSolving: 85,
-        communicationSkills: 87,
-        answerQuality: 84,
-        confidence: 86,
-      },
-      strengths: [
-        'Strong technical clarity and structured explanations',
-        'Effective role-based concept application',
-      ],
-      weaknesses: [
-        'Could include more quantitative production metrics',
-      ],
-      suggestions: [
-        'Elaborate further on high-scale concurrency and failover strategies',
-      ],
-    };
+    console.warn('Backend API fetchInterviewFeedback failed, utilizing dynamic session score:', error);
+    return generateDynamicFeedbackFromSession();
   }
 }
