@@ -1,4 +1,5 @@
 import { getCurriculumAreas } from '../config/curriculum.js';
+import { getDomainProfile } from '../config/domains.js';
 
 export function buildQuestionPrompt(context: Record<string, any>): string {
   const candidate = context.candidate ?? {};
@@ -8,23 +9,23 @@ export function buildQuestionPrompt(context: Record<string, any>): string {
   const candidateMsgs = historyMsgs.filter((m: any) => m.sender === 'candidate');
   const lastCandidateAnswer = candidateMsgs.length > 0 ? String(candidateMsgs[candidateMsgs.length - 1].text ?? '') : '';
 
+  const role = String(candidate.role ?? 'AI Engineer');
+  const domainProfile = getDomainProfile(role);
   const curriculum = getCurriculumAreas(candidate);
   const progressIdx = context.progress ?? 0;
-  const selectedTopic = curriculum[progressIdx % curriculum.length] ?? curriculum[0];
-  const primaryArea = selectedTopic?.area ?? 'Technical Core';
+  const selectedTopic = domainProfile.progression[progressIdx % domainProfile.progression.length] ?? domainProfile.coreTopics[0] ?? curriculum[0]?.topic ?? 'Core Technical Domain';
   const interviewType = String(candidate.interviewType ?? 'Technical Interview');
   const experienceLevel = String(candidate.experienceLevel ?? 'Junior');
-  const role = String(candidate.role ?? 'AI Engineer');
 
-  let adaptiveInstruction = `Generate an engaging technical question for target role "${role}".`;
+  let adaptiveInstruction = `Generate a specialized technical question for target role "${role}".`;
   if (prevEval) {
     const prevScore = Number(prevEval.correctness ?? prevEval.score ?? 70);
     if (prevScore >= 75) {
-      adaptiveInstruction = `PREVIOUS ANSWER WAS CORRECT (${prevScore}%). DO NOT CRITICIZE IT. Acknowledge what the candidate got right, and scale UP difficulty to a deeper technical scenario, edge case, or trade-off in "${primaryArea}".`;
+      adaptiveInstruction = `PREVIOUS ANSWER WAS CORRECT (${prevScore}%). DO NOT CRITICIZE IT. Acknowledge what the candidate got right, and scale UP difficulty to a deeper technical scenario, edge case, or trade-off in "${selectedTopic}".`;
     } else if (prevScore >= 50) {
-      adaptiveInstruction = `PREVIOUS ANSWER WAS PARTIALLY CORRECT (${prevScore}%). Identify the exact missing concept (${(prevEval.missingConcepts || []).join(', ')}) and ask a targeted follow-up specifically about that missing piece.`;
+      adaptiveInstruction = `PREVIOUS ANSWER WAS PARTIALLY CORRECT (${prevScore}%). Identify the exact missing concept (${(prevEval.missingConcepts || []).join(', ')}) and ask a targeted follow-up specifically about that missing piece within domain "${selectedTopic}".`;
     } else {
-      adaptiveInstruction = `PREVIOUS ANSWER WAS INCORRECT (${prevScore}%). Ask a simpler diagnostic question in "${primaryArea}" to test fundamental understanding.`;
+      adaptiveInstruction = `PREVIOUS ANSWER WAS INCORRECT (${prevScore}%). Ask a simpler diagnostic question in "${selectedTopic}" to test fundamental understanding.`;
     }
   }
 
@@ -36,7 +37,10 @@ Analyze this answer carefully. Acknowledge the candidate's actual points. NEVER 
 
   return `You are a Principal Lead Technical Interviewer conducting a realistic, interactive interview for a ${role} (${experienceLevel} level, ${interviewType}).
 Target Role: ${role}
-Target Topic: ${primaryArea}
+Target Core Domain Topic: ${selectedTopic}
+Allowed Domain Topics: ${domainProfile.coreTopics.join(', ')}
+STRICT FORBIDDEN TOPICS (DO NOT ASK ABOUT ANY OF THESE): ${domainProfile.forbiddenTopics.join(', ')}
+
 Previously Asked Questions (DO NOT REPEAT ANY OF THESE OR SIMILAR QUESTIONS):
 ${askedQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
@@ -44,11 +48,12 @@ ${adaptiveInstruction}
 ${followUpContext}
 
 CRITICAL INTERVIEWER BEHAVIOR & RULES:
-1. NEVER REPEAT QUESTIONS: Compare your proposed question against Previously Asked Questions above. Do NOT ask the same question or a variation with slightly different wording.
-2. DO NOT FALSELY CRITICIZE CORRECT ANSWERS: If candidate answer is correct, acknowledge what they got right and move deeper or to a new topic.
-3. SPECIFIC ACKNOWLEDGEMENTS: Reference the candidate's actual answer content in your prefix.
-4. STRICT ROLE-BASED FOCUS: Ensure the question matches ${role}.
-5. Return JSON ONLY with fields: question, topic, difficulty.`;
+1. STRICT ROLE SPECIFICITY: Generate questions ONLY from ${role} core topics (${domainProfile.coreTopics.join(', ')}).
+2. DOMAIN RELEVANCE SCORE >= 8: Discard any question matching forbidden topics (${domainProfile.forbiddenTopics.join(', ')}).
+3. NEVER REPEAT QUESTIONS: Compare proposed question against Previously Asked Questions above. Do NOT ask the same question or a variation with slightly different wording.
+4. DO NOT FALSELY CRITICIZE CORRECT ANSWERS: If candidate answer is correct, acknowledge what they got right and move deeper into the domain.
+5. SPECIFIC ACKNOWLEDGEMENTS: Reference the candidate's actual answer content in your prefix.
+6. Return JSON ONLY with fields: question, topic, difficulty.`;
 }
 
 export function buildEvaluationPrompt(context: Record<string, any>): string {
