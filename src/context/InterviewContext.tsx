@@ -258,7 +258,15 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
           saveInterviewSession(s);
         }
 
-        const response = await api.submitAnswer(sessionId, currentQuestion.questionId, answer);
+        const askedQuestionsList = messages.filter((m) => m.sender === 'ai').map((m) => m.text);
+        const response = await api.submitAnswer(sessionId, currentQuestion.questionId, answer, {
+          role: config.role,
+          experienceLevel: config.experienceLevel,
+          interviewType: config.interviewType,
+          questionCount: totalQuestions,
+          currentQuestionIndex: questionNumber,
+          askedQuestions: askedQuestionsList,
+        });
 
         if (response.done) {
           setInterviewCompleted(true);

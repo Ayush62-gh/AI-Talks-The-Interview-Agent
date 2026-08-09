@@ -49,9 +49,21 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ error: validation.error });
     }
 
-    const s = getSession(validation.value.sessionId);
+    let s = getSession(validation.value.sessionId);
     if (!s) {
-      return res.status(404).json({ error: { code: 'SESSION_NOT_FOUND', message: 'Session not found' } });
+      const candidatePayload = (body as any).candidate;
+      if (candidatePayload && candidatePayload.role) {
+        s = createSession(candidatePayload);
+        s.sessionId = validation.value.sessionId;
+        if (Array.isArray((body as any).askedQuestions)) {
+          s.askedQuestions = (body as any).askedQuestions;
+        }
+        if (typeof (body as any).questionIndex === 'number') {
+          s.progress = Math.max(0, (body as any).questionIndex - 1);
+        }
+      } else {
+        return res.status(404).json({ error: { code: 'SESSION_NOT_FOUND', message: 'Session not found' } });
+      }
     }
 
     if (s.status === 'completed') {

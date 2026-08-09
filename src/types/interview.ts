@@ -78,7 +78,7 @@ export interface StartInterviewResponse {
 }
 
 export interface SubmitAnswerResponse {
-  nextQuestion?: InterviewQuestion;
+  nextQuestion?: InterviewQuestion | null;
   done: boolean;
   progress?: number;
   feedback?: InterviewFeedback;
