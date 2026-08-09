@@ -59,6 +59,19 @@ export interface InterviewFeedback {
   suggestions: string[];
 }
 
+export interface InterviewEvaluation {
+  questionId?: string;
+  score?: number;
+  correctness?: number;
+  relevance?: number;
+  technicalDepth?: number;
+  communication?: number;
+  strengths?: string[];
+  weaknesses?: string[];
+  missingConcepts?: string[];
+  assessment?: string;
+}
+
 export interface InterviewSession {
   sessionId: string;
   candidate: CandidatePayload;
@@ -66,6 +79,13 @@ export interface InterviewSession {
   questionCount: number;
   progress: number;
   messages: { sender: 'candidate' | 'ai'; text: string; timestamp: string }[];
+  evaluations: InterviewEvaluation[];
+  askedQuestions?: string[];
+  coveredTopics?: string[];
+  evaluatedConcepts?: string[];
+  weakConcepts?: string[];
+  strongConcepts?: string[];
+  currentDifficulty?: 'easy' | 'medium' | 'hard';
   status: 'active' | 'completed';
   feedback?: InterviewFeedback | null;
   createdAt: string;

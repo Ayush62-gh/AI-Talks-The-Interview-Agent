@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage';
 import InterviewPage from './pages/InterviewPage';
 import InterviewSetup from './pages/InterviewSetup';
 import CompletePage from './pages/CompletePage';
+import FeedbackPage from './pages/FeedbackPage';
 import { InterviewProvider } from './context/InterviewContext';
 import ThemeToggle from './components/ThemeToggle';
 
@@ -70,6 +71,19 @@ function App() {
                   transition={{ duration: 0.35 }}
                 >
                   <CompletePage />
+                </motion.div>
+              }
+            />
+            <Route
+              path="/feedback"
+              element={
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.35 }}
+                >
+                  <FeedbackPage />
                 </motion.div>
               }
             />

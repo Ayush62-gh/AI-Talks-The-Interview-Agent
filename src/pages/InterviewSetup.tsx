@@ -10,6 +10,9 @@ const roleOptions: RoleOption[] = [
   'Frontend Developer',
   'Backend Developer',
   'Full Stack Developer',
+  'Java Backend Developer',
+  'AI Engineer',
+  'Data Analyst',
   'Product Manager',
   'Data Scientist',
   'DevOps Engineer',
@@ -19,13 +22,16 @@ const experienceOptions: ExperienceLevelOption[] = ['Fresher', 'Junior', 'Mid Le
 
 const interviewTypes: InterviewTypeOption[] = ['Technical Interview', 'Behavioral Interview', 'System Design Interview'];
 
-const questionCounts = [5, 10, 15];
+const questionCounts = [8, 10, 15];
 
 const roleDescriptions: Record<RoleOption, string> = {
   'Software Engineer': 'Practice software engineering fundamentals, coding concepts, APIs, and system reasoning.',
   'Frontend Developer': 'Focus on JavaScript, React, browser concepts, UI architecture, and frontend fundamentals.',
   'Backend Developer': 'Prepare for APIs, databases, backend architecture, and server-side concepts.',
   'Full Stack Developer': 'Cover both frontend and backend trade-offs with balanced product and technical depth.',
+  'Java Backend Developer': 'Practice Java core, JVM internals, Spring Boot, REST APIs, JPA/Hibernate, and concurrency.',
+  'AI Engineer': 'Practice 31-Day AI Cohort topics: LLMs, Prompting, RAG, Vector DBs, MCP, Agents, and Guardrails.',
+  'Data Analyst': 'Focus on SQL queries, window functions, Pandas data wrangling, and statistical analysis.',
   'Product Manager': 'Practice prioritization, product thinking, metrics, and behavioral scenarios.',
   'Data Scientist': 'Work through statistics, experimentation, analysis, and case-based problem solving.',
   'DevOps Engineer': 'Prepare for cloud, CI/CD, containers, infrastructure, and reliability concepts.',
@@ -45,18 +51,19 @@ const interviewTypeDescriptions: Record<InterviewTypeOption, string> = {
 };
 
 const defaultConfig: InterviewConfig = {
-  role: 'Frontend Developer',
+  role: 'AI Engineer',
   experienceLevel: 'Junior',
   interviewType: 'Technical Interview',
-  questionCount: 5,
+  questionCount: 8,
 };
 
 export default function InterviewSetup() {
   const navigate = useNavigate();
-  const { startInterview, loading } = useInterview();
+  const { startInterview, loading, error: contextError } = useInterview();
   const [config, setConfig] = useState<InterviewConfig>(defaultConfig);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const activeError = error || contextError;
 
   const summaryItems = useMemo(
     () => [
@@ -92,175 +99,133 @@ export default function InterviewSetup() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.1),transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.12),transparent_25%)] px-4 py-8 text-slate-900 transition-colors duration-300 sm:px-6 lg:px-10 dark:text-slate-100">
-      <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="space-y-6 rounded-[2rem] border border-slate-200/70 bg-white/75 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70 dark:shadow-glass">
-          <div className="space-y-4">
-            <p className="text-sm uppercase tracking-[0.28em] text-sky-600 dark:text-sky-300">Session setup</p>
-            <h1 className="text-4xl font-semibold text-slate-950 dark:text-white">Prepare your AI interview session.</h1>
-            <p className="text-slate-700 dark:text-slate-300">Choose your role, experience level, interview format, and question count before starting your interview.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <label className="space-y-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                Role
-                <select
-                  value={config.role}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, role: event.target.value as RoleOption }))}
-                  className="w-full rounded-3xl border border-slate-200/70 bg-white/90 px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100"
-                >
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-                <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">{roleDescriptions[config.role]}</p>
-              </label>
-
-              <label className="space-y-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                Experience Level
-                <select
-                  value={config.experienceLevel}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, experienceLevel: event.target.value as ExperienceLevelOption }))}
-                  className="w-full rounded-3xl border border-slate-200/70 bg-white/90 px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100"
-                >
-                  {experienceOptions.map((level) => (
-                    <option key={level} value={level}>{level}</option>
-                  ))}
-                </select>
-                <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">{experienceDescriptions[config.experienceLevel]}</p>
-              </label>
+    <main className="min-h-screen lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),transparent_40%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.15),transparent_30%)] p-2 sm:p-4 lg:p-5 text-slate-900 transition-colors duration-300 dark:text-slate-100">
+      <div className="w-full h-full max-w-none grid gap-4 lg:grid-cols-[1.15fr_0.85fr] items-stretch">
+        <section className="flex flex-col justify-between h-full overflow-y-auto rounded-[2.25rem] border border-slate-200/80 bg-white/85 p-8 sm:p-10 lg:p-12 shadow-[0_24px_80px_rgba(15,23,42,0.1)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80 dark:shadow-glass">
+          <div>
+            <div className="space-y-2.5">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">Session Setup</p>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-950 dark:text-white tracking-tight">Prepare your AI session.</h1>
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300">Configure your target role, experience level, and interview format.</p>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <label className="space-y-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                Interview Type
-                <select
-                  value={config.interviewType}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, interviewType: event.target.value as InterviewTypeOption }))}
-                  className="w-full rounded-3xl border border-slate-200/70 bg-white/90 px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100"
-                >
-                  {interviewTypes.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">{interviewTypeDescriptions[config.interviewType]}</p>
-              </label>
+            <form onSubmit={handleSubmit} className="mt-8 lg:mt-10 space-y-6 lg:space-y-8">
+              <div className="grid gap-6 sm:grid-cols-2">
+                <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Role Target
+                  <select
+                    value={config.role}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, role: event.target.value as RoleOption }))}
+                    className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3.5 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {roleOptions.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </label>
 
-              <label className="space-y-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                Question Count
-                <select
-                  value={config.questionCount}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, questionCount: Number(event.target.value) }))}
-                  className="w-full rounded-3xl border border-slate-200/70 bg-white/90 px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100"
-                >
-                  {questionCounts.map((count) => (
-                    <option key={count} value={count}>{count}</option>
-                  ))}
-                </select>
-                <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">Select the number of questions for this interview.</p>
-              </label>
-            </div>
+                <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Experience Level
+                  <select
+                    value={config.experienceLevel}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, experienceLevel: event.target.value as ExperienceLevelOption }))}
+                    className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3.5 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {experienceOptions.map((level) => (
+                      <option key={level} value={level}>{level}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-            <div className="rounded-[2rem] border border-slate-200/70 bg-slate-50/80 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-              <div className="flex items-center gap-2">
-                <FaInfoCircle className="h-4 w-4 text-sky-600 dark:text-sky-300" />
-                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Interview Summary</h2>
-              </div>
-              <div className="mt-5 space-y-3">
-                {summaryItems.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/70 px-4 py-3 text-sm text-slate-600 dark:bg-slate-950/70 dark:text-slate-300">
-                    <span>{item.label}</span>
-                    <span className="font-semibold text-slate-950 dark:text-white">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Interview Format
+                  <select
+                    value={config.interviewType}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, interviewType: event.target.value as InterviewTypeOption }))}
+                    className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3.5 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {interviewTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </label>
 
-            <div className="rounded-[2rem] border border-slate-200/70 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-              <div className="flex items-center gap-2">
-                <FaCheckCircle className="h-4 w-4 text-emerald-500" />
-                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">What to expect</h2>
+                <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Question Count
+                  <select
+                    value={config.questionCount}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, questionCount: Number(event.target.value) }))}
+                    className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3.5 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {questionCounts.map((count) => (
+                      <option key={count} value={count}>{count} Questions</option>
+                    ))}
+                  </select>
+                </label>
               </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {[
-                  'Role-specific questions',
-                  'One question at a time',
-                  'Progress tracked throughout',
-                  'Detailed feedback at the end',
-                ].map((item) => (
-                  <div key={item} className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="rounded-[2rem] border border-dashed border-slate-300/80 bg-slate-50/60 p-5 dark:border-slate-700 dark:bg-slate-900/60">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-950 dark:text-white">Personalize your interview</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">Optional — upload your resume to prepare for role-specific discussion in a future version.</p>
+              <div className="rounded-2xl border border-slate-200/90 bg-slate-50/90 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-900/80">
+                <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <span className="font-semibold text-sky-700 dark:text-sky-300">Target Focus: </span>
+                  {roleDescriptions[config.role]}
+                </p>
+              </div>
+
+              {activeError ? (
+                <div className="rounded-2xl border border-rose-300/80 bg-rose-50/90 px-5 py-4 text-sm sm:text-base text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+                  {activeError}
                 </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-400 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200"
-                >
-                  <FaUpload className="h-4 w-4" />
-                  Upload Resume
-                </button>
-              </div>
-            </div>
+              ) : null}
 
-            {error ? (
-              <div className="rounded-2xl border border-rose-300/70 bg-rose-50/80 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-                {error}
+              <div className="pt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Button type="submit" disabled={loading || submitting} className="w-full gap-3 sm:w-auto px-8 py-4 text-base sm:text-lg font-semibold shadow-lg hover:scale-105 transition-transform">
+                  {loading || submitting ? (
+                    <>
+                      <FaSpinner className="h-5 w-5 animate-spin" /> Creating Session...
+                    </>
+                  ) : (
+                    'Start Interview →'
+                  )}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => navigate('/')} className="px-6 py-3.5 text-sm sm:text-base font-medium">
+                  Back to Home
+                </Button>
               </div>
-            ) : null}
-
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <Button type="submit" disabled={loading || submitting} className="w-full gap-2 sm:w-auto">
-                {loading || submitting ? (
-                  <>
-                    <FaSpinner className="h-4 w-4 animate-spin" /> Creating Interview...
-                  </>
-                ) : (
-                  'Start Interview'
-                )}
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate('/')}>
-                Back to Home
-              </Button>
-            </div>
-          </form>
+            </form>
+          </div>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200/70 bg-white/75 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70 dark:shadow-glass">
-          <p className="text-sm uppercase tracking-[0.28em] text-sky-600 dark:text-sky-300">Your interview plan</p>
-          <h2 className="mt-4 text-3xl font-semibold text-slate-950 dark:text-white">Prepare for a focused session.</h2>
-          <div className="mt-6 rounded-[1.5rem] border border-slate-200/70 bg-slate-50/80 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-            {summaryItems.map((item) => (
-              <div key={item.label} className="flex items-start justify-between gap-4 border-b border-slate-200/70 py-3 last:border-b-0 dark:border-white/10">
-                <span className="text-sm text-slate-500 dark:text-slate-400">{item.label}</span>
-                <span className="text-right text-sm font-semibold text-slate-950 dark:text-white">{item.value}</span>
-              </div>
-            ))}
-          </div>
+        <section className="flex flex-col justify-between h-full overflow-y-auto rounded-[2.25rem] border border-slate-200/80 bg-white/85 p-8 sm:p-10 lg:p-12 shadow-[0_24px_80px_rgba(15,23,42,0.1)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80 dark:shadow-glass">
+          <div>
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">Interview Plan</p>
+            <h2 className="mt-2 text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-950 dark:text-white tracking-tight">Session Overview</h2>
 
-          <div className="mt-6 rounded-[1.5rem] border border-slate-200/70 bg-slate-50/80 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-            <h3 className="text-base font-semibold text-slate-950 dark:text-white">What to expect</h3>
-            <div className="mt-4 space-y-3">
-              {[
-                { number: '01', title: 'Role-specific questions' },
-                { number: '02', title: 'One question at a time' },
-                { number: '03', title: 'Progress tracking throughout' },
-                { number: '04', title: 'Detailed feedback at the end' },
-              ].map((item) => (
-                <div key={item.number} className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/15 to-violet-500/15 text-sm font-semibold text-sky-700 dark:text-sky-300">{item.number}</span>
-                  <span>{item.title}</span>
+            <div className="mt-8 rounded-2xl border border-slate-200/90 bg-slate-50/90 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-900/80 space-y-4">
+              {summaryItems.map((item) => (
+                <div key={item.label} className="flex items-center justify-between text-sm sm:text-base border-b border-slate-200/80 pb-3.5 last:border-b-0 last:pb-0 dark:border-white/5">
+                  <span className="text-slate-600 dark:text-slate-400">{item.label}</span>
+                  <span className="font-semibold text-slate-950 dark:text-white text-base sm:text-lg">{item.value}</span>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200/90 bg-slate-50/90 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-900/80">
+              <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-950 dark:text-white">Session Highlights</h3>
+              <div className="mt-4 space-y-3">
+                {[
+                  { number: '01', title: 'Curriculum & role-specific questions' },
+                  { number: '02', title: 'Dynamic follow-up based on your response' },
+                  { number: '03', title: 'Live progress & topic coverage tracking' },
+                  { number: '04', title: 'Factual verification & score report' },
+                ].map((item) => (
+                  <div key={item.number} className="flex items-center gap-3.5 text-sm sm:text-base text-slate-700 dark:text-slate-300 py-1">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/20 text-xs font-semibold text-sky-700 dark:text-sky-300">{item.number}</span>
+                    <span>{item.title}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

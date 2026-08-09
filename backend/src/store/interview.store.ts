@@ -1,23 +1,22 @@
 import { InterviewSession } from '../models/interview.types.js';
-
-const sessions = new Map<string, InterviewSession>();
+import { deleteSessionRecord, getSessionRecord, hasSessionRecord, listSessionRecords, saveSessionRecord } from '../repositories/interview.repository.js';
 
 export function saveSession(session: InterviewSession) {
-  sessions.set(session.sessionId, session);
+  return saveSessionRecord(session);
 }
 
 export function getSession(sessionId: string): InterviewSession | undefined {
-  return sessions.get(sessionId);
+  return getSessionRecord(sessionId);
 }
 
 export function hasSession(sessionId: string): boolean {
-  return sessions.has(sessionId);
+  return hasSessionRecord(sessionId);
 }
 
 export function deleteSession(sessionId: string): boolean {
-  return sessions.delete(sessionId);
+  return deleteSessionRecord(sessionId);
 }
 
 export function listSessions(): InterviewSession[] {
-  return Array.from(sessions.values());
+  return listSessionRecords();
 }

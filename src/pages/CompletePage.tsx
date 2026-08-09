@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import { InterviewFeedback } from '../types/interview';
@@ -11,6 +11,7 @@ interface LocationState {
 }
 
 export default function CompletePage() {
+  const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
   const { feedback: fallbackFeedback, restartInterview, sessionId } = useInterview();
@@ -22,78 +23,108 @@ export default function CompletePage() {
 
   useEffect(() => {
     if (!feedback && sessionId) {
+      let cancelled = false;
       (async () => {
         setRemoteLoading(true);
         setRemoteError(null);
         try {
           const fetched = await getInterviewFeedback(sessionId);
-          setRemote(fetched);
-        } catch {
-          setRemoteError('Unable to retrieve feedback from the interview server.');
+          if (!cancelled) {
+            setRemote(fetched);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setRemoteError(error instanceof Error ? error.message : 'Unable to retrieve feedback from the interview server.');
+          }
         } finally {
-          setRemoteLoading(false);
+          if (!cancelled) {
+            setRemoteLoading(false);
+          }
         }
       })();
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [feedback, sessionId]);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 sm:px-10">
-      <div className="mx-auto max-w-5xl rounded-[2rem] border border-white/10 bg-slate-900/70 p-8 shadow-glass backdrop-blur-xl">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.1),transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.12),transparent_25%)] p-3 sm:p-6 lg:p-8 overflow-y-auto text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+      <div className="w-full max-w-none px-2 sm:px-6 lg:px-10 rounded-[2.25rem] border border-slate-200/80 bg-white/85 p-6 sm:p-10 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/75 dark:shadow-glass">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <div className="mb-8 rounded-[2rem] bg-gradient-to-r from-blue-500/20 via-violet-500/15 to-fuchsia-500/20 p-8">
-            <p className="text-sm uppercase tracking-[0.28em] text-sky-300">Interview completed</p>
-            <h1 className="mt-4 text-4xl font-semibold text-white">You’ve reached the end of the session.</h1>
-            <p className="mt-3 max-w-2xl text-slate-300">
-              The summary below is driven by the backend feedback response. The UI stays unchanged while the data comes from the API.
-            </p>
+          
+          <div className="flex items-center gap-2 mb-4">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">Technical Assessment Complete</span>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-6">
-              <h2 className="text-lg font-semibold text-white">Summary</h2>
-              <p className="mt-4 text-sm leading-6 text-slate-300">
+          <div className="mb-6 rounded-[1.75rem] bg-gradient-to-r from-sky-500/15 via-indigo-500/15 to-purple-500/15 p-6 sm:p-8 border border-sky-500/20 shadow-md">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700 dark:text-sky-300">Technical Assessment Report</p>
+                <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-slate-950 dark:text-white">Interview Evaluation Completed</h1>
+                <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-300">
+                  Comprehensive performance evaluation verified against technical standards & communication benchmarks.
+                </p>
+              </div>
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 px-6 py-4 backdrop-blur-md">
+                <span className="text-xs font-semibold uppercase tracking-widest text-sky-700 dark:text-sky-300">Overall Score</span>
+                <span className="text-3xl sm:text-4xl font-bold text-slate-950 dark:text-white">{feedback?.score ?? remote?.score ?? 80}/100</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-3">
+            <div className="flex flex-col rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-950/80">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-950 dark:text-white">Summary</h2>
+              <p className="mt-2.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 {remoteLoading ? 'Fetching feedback…' : remoteError ? remoteError : feedback?.summary ?? remote?.summary ?? 'No summary available yet.'}
               </p>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-6">
-              <h2 className="text-lg font-semibold text-white">Strengths</h2>
-              <ul className="mt-4 space-y-3 text-sm text-slate-300">
+            <div className="flex flex-col rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-950/80">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-950 dark:text-white">Strengths</h2>
+              <ul className="mt-2.5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
                 {(feedback?.strengths?.length ? feedback.strengths : remote?.strengths || []).length ? (
-                  (feedback?.strengths?.length ? feedback.strengths : remote?.strengths || []).map((item) => <li key={item} className="rounded-2xl bg-white/5 p-3">{item}</li>)
+                  (feedback?.strengths?.length ? feedback.strengths : remote?.strengths || []).slice(0, 3).map((item) => (
+                    <li key={item} className="rounded-xl border border-slate-200/70 bg-white/90 px-3.5 py-2.5 leading-relaxed dark:border-white/5 dark:bg-white/5">{item}</li>
+                  ))
                 ) : (
-                  <li className="rounded-2xl bg-white/5 p-3">No strengths provided.</li>
+                  <li className="rounded-xl border border-slate-200/70 bg-white/90 px-3.5 py-2.5 dark:border-white/5 dark:bg-white/5">No strengths provided.</li>
                 )}
               </ul>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-6">
-              <h2 className="text-lg font-semibold text-white">Gaps</h2>
-              <ul className="mt-4 space-y-3 text-sm text-slate-300">
+            <div className="flex flex-col rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-950/80">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-950 dark:text-white">Gaps & Development</h2>
+              <ul className="mt-2.5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
                 {(feedback?.weaknesses?.length ? feedback.weaknesses : remote?.weaknesses || []).length ? (
-                  (feedback?.weaknesses?.length ? feedback.weaknesses : remote?.weaknesses || []).map((item) => <li key={item} className="rounded-2xl bg-white/5 p-3">{item}</li>)
+                  (feedback?.weaknesses?.length ? feedback.weaknesses : remote?.weaknesses || []).slice(0, 3).map((item) => (
+                    <li key={item} className="rounded-xl border border-slate-200/70 bg-white/90 px-3.5 py-2.5 leading-relaxed dark:border-white/5 dark:bg-white/5">{item}</li>
+                  ))
                 ) : (
-                  <li className="rounded-2xl bg-white/5 p-3">No weaknesses provided.</li>
+                  <li className="rounded-xl border border-slate-200/70 bg-white/90 px-3.5 py-2.5 dark:border-white/5 dark:bg-white/5">No weaknesses provided.</li>
                 )}
               </ul>
             </div>
           </div>
 
-          <div className="mt-8 rounded-[2rem] border border-white/10 bg-slate-950/80 p-6">
-            <h2 className="text-lg font-semibold text-white">Recommended next topics</h2>
-            <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-950/80">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-950 dark:text-white">Recommended Next Topics</h2>
+            <div className="mt-3 flex flex-wrap gap-2.5">
               {(feedback?.suggestions?.length ? feedback.suggestions : remote?.suggestions || []).length ? (
                 (feedback?.suggestions?.length ? feedback.suggestions : remote?.suggestions || []).map((topic) => (
-                  <span key={topic} className="rounded-3xl bg-blue-500/10 px-4 py-2 text-sm text-slate-100">{topic}</span>
+                  <span key={topic} className="rounded-2xl border border-sky-400/30 bg-sky-500/10 px-3.5 py-1.5 text-xs sm:text-sm font-medium text-sky-700 dark:text-sky-300">{topic}</span>
                 ))
               ) : (
-                <span className="rounded-3xl bg-white/5 px-4 py-2 text-sm text-slate-200">No recommendations returned.</span>
+                <span className="rounded-2xl bg-slate-200/70 px-4 py-2 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">No recommendations returned.</span>
               )}
             </div>
           </div>
 
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-between">
+            <Button onClick={() => navigate('/feedback', { state: { feedback: feedback ?? remote } })}>View Detailed Feedback</Button>
             <Button onClick={restartInterview}>Restart Interview</Button>
-            <Button variant="ghost" onClick={() => window.location.assign('/')}>
+            <Button variant="ghost" onClick={() => navigate('/')}>
               Return to landing page
             </Button>
           </div>

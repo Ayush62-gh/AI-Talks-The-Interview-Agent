@@ -5,7 +5,10 @@ export type RoleOption =
   | 'Full Stack Developer'
   | 'Product Manager'
   | 'Data Scientist'
-  | 'DevOps Engineer';
+  | 'DevOps Engineer'
+  | 'Java Backend Developer'
+  | 'Data Analyst'
+  | 'AI Engineer';
 
 export type ExperienceLevelOption = 'Fresher' | 'Junior' | 'Mid Level' | 'Senior';
 

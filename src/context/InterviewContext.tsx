@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, R
 import { useNavigate } from 'react-router-dom';
 import { InterviewConfig, InterviewFeedback, InterviewQuestion, Message, InterviewFullSession, InterviewTopicMetadata } from '../types/interview';
 import * as api from '../services/api';
-import { createInterviewSession, loadInterviewSession, saveInterviewSession } from '../services/session';
+import { loadInterviewSession, saveInterviewSession } from '../services/session';
 
 interface InterviewContextValue {
   config: InterviewConfig | null;
@@ -164,7 +164,10 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
 
   const startInterview = useCallback(
     async (setupConfig: InterviewConfig) => {
-      navigate('/interview');
+      if (loading) {
+        return;
+      }
+
       setLoading(true);
       setError(null);
       setConfig(setupConfig);
@@ -175,18 +178,46 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
       setSessionStartedAt(new Date().toISOString());
 
       try {
-        const session = await createInterviewSession(setupConfig);
-        setSessionData(session);
-        setSessionId(session.sessionId);
-        setTotalQuestions(session.questionCount);
-        setQuestionNumber(1);
-        const first = session.questions[0];
+        const response = await api.startInterview(setupConfig);
+        const sessionIdFromServer = response.sessionId ?? '';
+        const firstQuestionText = response.firstQuestion?.text ?? response.reply ?? '';
+
+        if (!sessionIdFromServer) {
+          throw new Error('No session id returned by the server');
+        }
+
         const initialMetadata = fallbackTopicMetadata(1);
-        setCurrentQuestion({ questionId: first.id, text: first.question, metadata: initialMetadata });
-        setMessages([createMessage('ai', first.question, 'question', initialMetadata, false)]);
-        saveInterviewSession(session);
+        const nextSession: InterviewFullSession = {
+          sessionId: sessionIdFromServer,
+          role: setupConfig.role,
+          experienceLevel: setupConfig.experienceLevel,
+          interviewType: setupConfig.interviewType,
+          questionCount: response.totalQuestions ?? setupConfig.questionCount,
+          currentQuestionIndex: 0,
+          questions: [
+            {
+              id: response.firstQuestion?.questionId ?? 'server-question',
+              question: firstQuestionText,
+              completed: false,
+              answer: null,
+            },
+          ],
+          answers: {},
+          createdAt: new Date().toISOString(),
+        };
+
+        setSessionData(nextSession);
+        setSessionId(sessionIdFromServer);
+        setTotalQuestions(nextSession.questionCount);
+        setQuestionNumber(1);
+        setCurrentQuestion({ questionId: response.firstQuestion?.questionId ?? 'server-question', text: firstQuestionText, metadata: initialMetadata });
+        setMessages([createMessage('ai', firstQuestionText, 'question', initialMetadata, false)]);
+        saveInterviewSession(nextSession);
+        navigate('/interview');
       } catch (err) {
-        setError('Unable to connect to the interview server. Please try again.');
+        const msg = err instanceof Error ? err.message : 'Unable to connect to the interview server. Please try again.';
+        setError(msg);
+        throw new Error(msg);
       } finally {
         setLoading(false);
       }
@@ -196,7 +227,7 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
 
   const submitAnswer = useCallback(
     async (answer: string) => {
-      if (!sessionId || !currentQuestion || !config) {
+      if (loading || !sessionId || !currentQuestion || !config) {
         setError('Your session is not initialized correctly. Please restart the interview.');
         return;
       }
@@ -205,41 +236,62 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
       appendMessage(createMessage('candidate', answer, 'answer'));
 
       try {
-        // store locally
         const s = sessionData;
         if (s) {
           const idx = s.currentQuestionIndex;
+          if (!s.questions[idx]) {
+            s.questions[idx] = {
+              id: currentQuestion?.questionId ?? `q-${Date.now()}`,
+              question: currentQuestion?.text ?? '',
+              completed: false,
+              answer: null,
+            };
+          }
           const q = s.questions[idx];
-          q.answer = answer;
-          q.completed = true;
-          s.answers[q.id] = answer;
-          s.currentQuestionIndex = Math.min(s.questionCount - 1, s.currentQuestionIndex + 1);
+          if (q) {
+            q.answer = answer;
+            q.completed = true;
+            s.answers[q.id] = answer;
+          }
+          s.currentQuestionIndex = s.currentQuestionIndex + 1;
           setSessionData({ ...s });
           saveInterviewSession(s);
         }
 
-        // Call API to get next question / completion state (keeps architecture LLM-ready)
         const response = await api.submitAnswer(sessionId, currentQuestion.questionId, answer);
 
         if (response.done) {
           setInterviewCompleted(true);
-          setFeedback(response.feedback || null);
-          navigate('/complete', { state: { feedback: response.feedback } });
+          const feedbackPayload = response.feedback ?? null;
+          setFeedback(feedbackPayload);
+          navigate('/complete', { state: { feedback: feedbackPayload } });
           return;
         }
 
         const nextText = response.nextQuestion?.text ?? response.reply ?? '';
         if (nextText) {
-          const nextMetadata = response.nextQuestion?.metadata ?? fallbackTopicMetadata(questionNumber + 1);
+          const nextMetadata = fallbackTopicMetadata(questionNumber + 1);
           const followUp = questionNumber > 0;
-          setCurrentQuestion({ ...(response.nextQuestion ?? { questionId: `${Date.now()}-next`, text: nextText }), metadata: nextMetadata });
+          const nextQId = response.nextQuestion?.questionId ?? `${Date.now()}-next`;
+          setCurrentQuestion({ questionId: nextQId, text: nextText, metadata: nextMetadata });
           appendMessage(createMessage('ai', nextText, followUp ? 'followup' : 'question', nextMetadata, followUp));
+
+          if (s) {
+            s.questions.push({
+              id: nextQId,
+              question: nextText,
+              completed: false,
+              answer: null,
+            });
+            setSessionData({ ...s });
+            saveInterviewSession(s);
+          }
         }
-        if (response.progress) {
+        if (typeof response.progress === 'number') {
           setQuestionNumber(response.progress);
         }
       } catch (err) {
-        setError('Unable to connect to the interview server. Please try again.');
+        setError(err instanceof Error ? err.message : 'Unable to connect to the interview server. Please try again.');
       } finally {
         setLoading(false);
       }

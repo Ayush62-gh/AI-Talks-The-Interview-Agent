@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { createSession, getSession, generateFirstQuestion, evaluateAndNext, getFeedback } from '../services/interview.service.js';
+import { validateStartInterviewRequest, validateSubmitAnswerRequest } from '../utils/validation.js';
 import type {
   StartInterviewRequest,
   StartInterviewResponse,
@@ -15,26 +16,20 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
     const isSubmit = Boolean((body as SubmitAnswerRequest).sessionId && (body as SubmitAnswerRequest).message);
 
     if (!isSubmit) {
-      // Start interview
       const startReq = body as StartInterviewRequest;
-      if (!startReq.candidate) {
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'candidate is required' } });
+      const validation = validateStartInterviewRequest(startReq);
+      if (validation.error) {
+        return res.status(400).json({ error: validation.error });
       }
 
-      // Basic validation
-      const { role, experienceLevel, interviewType, questionCount } = startReq.candidate;
-      if (!role || !experienceLevel || !interviewType || !questionCount || typeof questionCount !== 'number') {
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid candidate payload' } });
-      }
-
-        const session = createSession(startReq.candidate);
+      const session = createSession(startReq.candidate);
 
         try {
           const q = await generateFirstQuestion(session.sessionId);
           const resp: StartInterviewResponse = {
             sessionId: session.sessionId,
             firstQuestion: q ? { questionId: q.questionId, text: q.text } : null,
-            reply: q ? 'First question generated' : null,
+            reply: q ? q.text : null,
             progress: session.progress,
             totalQuestions: session.questionCount,
             done: false,
@@ -49,14 +44,12 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
 
     // Handle submit
     const submitReq = body as SubmitAnswerRequest;
-    if (!submitReq.sessionId) {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'sessionId is required for submitting answers' } });
-    }
-    if (!submitReq.message || String(submitReq.message).trim() === '') {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'message is required' } });
+    const validation = validateSubmitAnswerRequest(submitReq);
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
     }
 
-    const s = getSession(submitReq.sessionId);
+    const s = getSession(validation.value.sessionId);
     if (!s) {
       return res.status(404).json({ error: { code: 'SESSION_NOT_FOUND', message: 'Session not found' } });
     }
@@ -66,7 +59,7 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
     }
 
     try {
-      const result = await evaluateAndNext(submitReq.sessionId, submitReq.message);
+      const result = await evaluateAndNext(validation.value.sessionId, validation.value.message);
       if (result.error) {
         return res.status(500).json({ error: { code: 'AI_REQUEST_FAILED', message: 'AI processing failed' } });
       }
