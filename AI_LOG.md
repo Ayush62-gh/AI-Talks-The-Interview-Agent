@@ -1,5 +1,112 @@
 # AI Activity Log
 
+# AI Activity Log & Technical Architecture Report
+
+**Project Name:** AI Interviewer — Adaptive Technical Recruiter Agent  
+**Date:** 2026-08-09  
+**Version:** 1.0.0 (Hackathon Production Build)  
+
+---
+
+## Executive Summary
+
+This log documents the end-to-end design, implementation, prompt engineering, and architectural enhancements performed by the AI assistant across the **AI Interviewer** platform. The system is an intelligent, multi-turn AI interview prep agent featuring real-time adaptive questioning, candidate response evaluation, non-repeating question guarantees, interactive recruiter dialogue, full-screen responsive UX, and SQLite session persistence.
+
+---
+
+## 🛠️ Core Features & Architectural Upgrades
+
+### 1. Dynamic Question Generation (Role, Level, & Format Tailored)
+- **Role Target Customization:** Generates domain-specific interview questions for `Software Engineer`, `Frontend Developer`, `Backend Developer`, `Full Stack Developer`, `Product Manager`, `Data Scientist`, and `DevOps Engineer`.
+- **Experience Level Scaling:**
+  - **Fresher / Junior:** Focuses on core syntax, fundamental computer science concepts, and clean code practices.
+  - **Mid Level:** Evaluates framework internals, performance optimization, design patterns, and debugging scenarios.
+  - **Senior / Lead:** Assesses high-scale production architecture, distributed systems, concurrency, failure recovery, and trade-off reasoning.
+- **Interview Format Specialization:**
+  - **Technical Interview:** Deep technical mechanics and language/tool internals.
+  - **System Design Interview:** Scalability, microservices, database sharding/indexing, caching, and load balancing.
+  - **Behavioral Interview:** Soft skills, conflict resolution, leadership, and project trade-offs using the STAR method (Situation, Task, Action, Result).
+
+### 2. Strict Non-Repeating Question Engine
+- Session history is continuously tracked in SQLite and memory.
+- The AI prompt enforces a strict `STRICT NON-REPETITION MANDATE`, prohibiting repetition or rephrasing of any previously asked questions in the active session.
+- Includes an automated fallback deduplication filter checking normalized question strings against session history.
+
+### 3. Interactive Answer-Based Recruiter Reactions
+- Rather than outputting cold questions, the AI interviewer dynamically evaluates candidate answers and reacts with conversational feedback:
+  - **High Mastery (Score ≥ 75):** *"Great response! You covered key concepts well. Let's build on that with the next question:"*
+  - **Good Progress (Score 55–74):** *"Good effort! You touched on important ideas. To take it further, let's explore this next question:"*
+  - **Needs Depth (Score < 55):** *"Thank you for sharing. It looks like we missed a few key technical details on that topic. Let's try this question next:"*
+
+### 4. Comprehensive Evaluation & Feedback Scoring Engine
+- Evaluates candidate responses across four key metrics:
+  1. **Correctness (0-100%)**
+  2. **Relevance (0-100%)**
+  3. **Technical Depth (0-100%)**
+  4. **Communication & Articulation (0-100%)**
+- Generates structured Strengths, Identified Technical Gaps, Missing Concepts, and an Executive Evaluation Summary.
+- Produces a final overall performance scorecard upon session completion.
+
+### 5. UI/UX & Full-Screen Responsive Layout
+- **Full Viewport Width (`w-full max-w-none px-4 sm:px-8 lg:px-12`):** Removed fixed max-width constraints across all pages (Landing, Setup, Interview, Complete, Feedback) to utilize full screen real estate.
+- **Snug Form & Action Containers:** Setup page cards wrap form controls and action buttons without bottom whitespace gaps.
+- **Theme Toggle System:** Global fixed top-right dark/light theme toggle with persistent `localStorage` sync.
+- **Modern Typography & Glassmorphism:** Styled with bold typography hierarchy (`font-black`), smooth micro-animations (`framer-motion`), and sleek glass card styling.
+
+---
+
+## 📁 Repository Structure & File Log
+
+```
+.
+├── api/
+│   └── index.ts                 # Serverless Vercel entrypoint proxying to Express backend
+├── backend/
+│   ├── src/
+│   │   ├── app.ts               # Express application with security, CORS, & route setup
+│   │   ├── config/              # Environment & curriculum configuration
+│   │   ├── controllers/         # Interview session & evaluation HTTP controllers
+│   │   ├── db/                  # SQLite database connection & schema initialization
+│   │   ├── models/              # TypeScript types for sessions, questions, & evaluations
+│   │   ├── providers/           # AI Provider Abstraction (OpenAI GPT-4o & Fallback Engine)
+│   │   │   ├── ai.provider.ts
+│   │   │   ├── mock.provider.ts
+│   │   │   ├── openai.provider.ts
+│   │   │   └── prompts.ts       # Structured prompt engineering & non-repetition rules
+│   │   ├── repositories/        # SQLite database repository methods
+│   │   └── services/            # Core interview orchestration & evaluation logic
+├── public/
+│   └── robot_avatar.png         # Clean transparent 3D AI Recruiter Avatar asset
+├── src/
+│   ├── components/              # UI components (Button, MessageBubble, ThemeToggle, etc.)
+│   ├── context/                 # Global React InterviewContext
+│   ├── pages/                   # Application pages (LandingPage, InterviewSetup, InterviewPage, etc.)
+│   └── services/                # Axios API client services
+├── AI_LOG.md                    # Complete AI activity & architecture log
+├── vercel.json                  # Vercel deployment configuration
+└── package.json                 # Project dependencies & scripts
+```
+
+---
+
+## 🚀 How to Commit and Push to GitHub
+
+Run the following commands from your project root:
+
+```bash
+git add .
+git commit -m "docs: add comprehensive AI activity log and Vercel deployment configuration"
+git push origin main
+```
+
+---
+
+## 🌐 Live Vercel Deployment Guide
+
+1. Push your code to GitHub.
+2. Connect your repository to [Vercel](https://vercel.com).
+3. Vercel will automatically detect the `Vite` preset and build both the frontend and serverless API endpoints seamlessly!
+
 Date: 2026-08-08
 
 Purpose: Record AI assistant actions while improving the interview frontend, and provide a corrected/rectified version of the user's request suitable for committing to the repository.
