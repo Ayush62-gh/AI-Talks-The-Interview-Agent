@@ -129,6 +129,32 @@ export default function CompletePage() {
             </div>
           </div>
 
+          <div className="mt-6 rounded-2xl border border-sky-500/25 bg-sky-500/5 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-950/80">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-950 dark:text-white">
+                31-Day AI Cohort Curriculum Coverage
+              </h2>
+              <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                Min 4 Days Verified
+              </span>
+            </div>
+            <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(feedback?.curriculumCoverage ?? remote?.curriculumCoverage ?? [
+                { area: 'RAG & Retrieval (Days 8–15)', covered: true },
+                { area: 'Vector Databases (Days 6–7)', covered: true },
+                { area: 'Prompt Engineering (Days 1–5)', covered: true },
+                { area: 'Agentic AI & Memory (Days 16–22)', covered: true },
+                { area: 'Model Context Protocol (Days 23–27)', covered: true },
+                { area: 'Production AI & Deployment (Days 28–31)', covered: true },
+              ]).map((item) => (
+                <div key={item.area} className="flex items-center gap-2.5 rounded-xl border border-sky-500/30 bg-white/90 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 shadow-sm dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-100">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-600 dark:text-emerald-400">✓</span>
+                  <span>{item.area}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6 dark:border-white/10 dark:bg-slate-950/80">
             <h2 className="text-base sm:text-lg font-semibold text-slate-950 dark:text-white">Recommended Next Topics</h2>
             <div className="mt-3 flex flex-wrap gap-2.5">

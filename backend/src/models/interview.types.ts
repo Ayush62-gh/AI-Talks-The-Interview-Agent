@@ -25,6 +25,9 @@ export interface StartInterviewRequest {
 export interface InterviewQuestion {
   questionId: string;
   text: string;
+  sourceDay?: number;
+  sourceModule?: string;
+  sourceTopic?: string;
 }
 
 export interface StartInterviewResponse {
@@ -63,6 +66,8 @@ export interface QuestionEvaluationDetail {
   questionText: string;
   answerText: string;
   topic?: string;
+  sourceDay?: number;
+  sourceModule?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   difficultyWeight: number;
   accuracy: number;
@@ -75,6 +80,13 @@ export interface QuestionEvaluationDetail {
   strengths: string[];
   weaknesses: string[];
   missingConcepts: string[];
+}
+
+export interface CurriculumCoverageItem {
+  area: string;
+  covered: boolean;
+  dayCount: number;
+  daysList: number[];
 }
 
 export interface InterviewFeedback {
@@ -92,6 +104,8 @@ export interface InterviewFeedback {
   metrics: {
     totalQuestions: number;
     answeredQuestions: number;
+    coveredDaysCount?: number;
+    coveredDaysList?: number[];
     averageAccuracy: number;
     averageRelevance: number;
     averageDepth: number;
@@ -100,6 +114,7 @@ export interface InterviewFeedback {
     sumDifficultyWeights: number;
   };
   questionEvaluations?: QuestionEvaluationDetail[];
+  curriculumCoverage?: CurriculumCoverageItem[];
   coveredTopics: string[];
   strongTopics: string[];
   weakTopics: string[];

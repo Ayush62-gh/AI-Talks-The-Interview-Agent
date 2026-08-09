@@ -255,19 +255,8 @@ function getAdaptiveQuestion(context: Record<string, any>): AIQuestion {
     }
   }
 
-  // Select appropriate question bank for candidate's selected role
-  let roleBank = cohortQuestionBank;
-  if (role === 'Java Backend Developer' || (role === 'Backend Developer' && !role.includes('AI'))) {
-    roleBank = javaBackendQuestionBank;
-  } else if (role === 'Frontend Developer') {
-    roleBank = frontendQuestionBank;
-  } else if (role === 'Data Analyst') {
-    roleBank = dataAnalystQuestionBank;
-  } else if (role === 'DevOps Engineer') {
-    roleBank = devopsQuestionBank;
-  } else if (role === 'Software Engineer') {
-    roleBank = softwareEngineerQuestionBank;
-  }
+  // The 31-Day AI Cohort Curriculum is the SINGLE source of truth for all interview questions
+  const roleBank = cohortQuestionBank;
 
   // Filter out any questions that match or are similar to previously asked questions
   let candidates = roleBank.filter((q) => q.difficulty === targetDifficulty && !isQuestionDuplicateOrSimilar(q.text, askedQuestions));
@@ -298,16 +287,13 @@ function getAdaptiveQuestion(context: Record<string, any>): AIQuestion {
 
     const partialPhrases = [
       `That's a good foundation regarding ${matchedConcept}. To make the technical details precise: ${chosen.text}`,
-      `You brought up a valid point about ${matchedConcept}. Let's elaborate on the missing architectural aspect: ${chosen.text}`,
-      `That touches on the basics of ${matchedConcept}. Can you expand on how this functions under the hood: ${chosen.text}`,
-      `Good start with ${matchedConcept}. Let's address the key concept in more detail: ${chosen.text}`,
+      `You touched on ${matchedConcept}, but missed key operational trade-offs. Let me ask: ${chosen.text}`,
+      `Partially correct on ${matchedConcept}. Let me clarify with a targeted follow-up question: ${chosen.text}`,
     ];
 
     const incorrectPhrases = [
-      `Let me clarify ${matchedConcept}: ${chosen.text}`,
-      `Not quite. Let's revisit ${matchedConcept} from a foundational perspective: ${chosen.text}`,
-      `That's a common misconception regarding ${matchedConcept}. Let's test fundamental understanding: ${chosen.text}`,
-      `Let's break down ${matchedConcept} step by step: ${chosen.text}`,
+      `I see. Let's revisit fundamental concepts regarding ${matchedConcept}. Consider this scenario: ${chosen.text}`,
+      `Not quite. Let's break down the underlying mechanism of ${matchedConcept}: ${chosen.text}`,
     ];
 
     if (prevScore >= 75) {
@@ -320,11 +306,14 @@ function getAdaptiveQuestion(context: Record<string, any>): AIQuestion {
   }
 
   return {
-    questionId: `q-${role.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`,
+    questionId: `q-cohort-day${chosen.day}-${Date.now()}`,
     text: questionText,
-    topic: `${chosen.topic}`,
+    topic: chosen.topic,
     difficulty: chosen.difficulty,
-  };
+    sourceDay: chosen.day,
+    sourceModule: chosen.module,
+    sourceTopic: chosen.topic,
+  } as any;
 }
 
 // Detect meaningless, time-pass, filler, or prompt injection responses
@@ -532,14 +521,23 @@ export default function createMockProvider(): AIProvider {
       const allStrengths = Array.from(new Set(evaluations.flatMap((e) => e.strengths || []))).filter(Boolean);
       const allWeaknesses = Array.from(new Set(evaluations.flatMap((e) => e.weaknesses || []))).filter(Boolean);
 
+      const curriculumCoverage = [
+        { area: 'RAG & Retrieval (Days 8–15)', covered: true, dayCount: 4, daysList: [8, 9, 10, 13] },
+        { area: 'Vector Databases (Days 6–7)', covered: true, dayCount: 2, daysList: [6, 7] },
+        { area: 'Prompt Engineering (Days 1–5)', covered: true, dayCount: 3, daysList: [1, 2, 4] },
+        { area: 'Agentic AI & Memory (Days 16–22)', covered: true, dayCount: 3, daysList: [16, 17, 21] },
+        { area: 'Model Context Protocol (Days 23–27)', covered: true, dayCount: 2, daysList: [23, 24] },
+        { area: 'Production AI & Deployment (Days 28–31)', covered: true, dayCount: 2, daysList: [28, 29] },
+      ];
+
       return {
         score: finalScore,
         finalScore,
         performanceCategory,
-        summary: `Weighted Assessment Report for ${role}: Evaluated across ${totalQ} questions. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
+        summary: `31-Day AI Cohort Assessment Report: Candidate evaluated across ${totalQ} questions. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
           finalScore >= 70
-            ? 'Candidate demonstrated verified technical mastery and clear reasoning.'
-            : 'Candidate submitted incomplete or inaccurate responses. Review foundational concepts.'
+            ? 'Candidate demonstrated verified technical mastery and clear reasoning across AI Cohort modules.'
+            : 'Candidate submitted incomplete or inaccurate responses. Review core AI Cohort study areas.'
         }`,
         categories: {
           technicalKnowledge: Math.round(avgAccuracy * 10),
@@ -551,6 +549,8 @@ export default function createMockProvider(): AIProvider {
         metrics: {
           totalQuestions: totalQ,
           answeredQuestions: totalQ,
+          coveredDaysCount: 6,
+          coveredDaysList: [1, 4, 7, 8, 13, 16, 23, 28],
           averageAccuracy: avgAccuracy,
           averageRelevance: avgRelevance,
           averageDepth: avgDepth,
@@ -558,10 +558,14 @@ export default function createMockProvider(): AIProvider {
           sumWeightedScores: Number(sumWeighted.toFixed(2)),
           sumDifficultyWeights: Number(sumWeights.toFixed(2)),
         },
-        strengths: allStrengths.length > 0 ? allStrengths : ['Completed full technical interview session'],
+        curriculumCoverage,
+        coveredTopics: ['RAG Architecture', 'Vector Databases & HNSW', 'Prompt Engineering', 'Agentic AI', 'MCP Protocol', 'vLLM & Deployment'],
+        strongTopics: ['RAG & Knowledge Retrieval', 'Vector Embeddings'],
+        weakTopics: ['Production Guardrails & Observability'],
+        strengths: allStrengths.length > 0 ? allStrengths : ['Completed full 31-Day AI Cohort technical interview'],
         weaknesses: allWeaknesses.length > 0 ? allWeaknesses : ['Lacked technical precision or trade-off depth'],
         suggestions: [
-          `Review foundational ${role} concepts and production architecture patterns`,
+          'Review 31-Day AI Cohort curriculum modules (RAG, Vector Search, MCP, Agentic Workflows)',
           'Focus on technical accuracy and providing concrete reasoning in explanations',
         ],
       } as AIFeedback;

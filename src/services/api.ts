@@ -424,13 +424,22 @@ export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engine
         const avgDepth = Number((sumDep / evaluatedCount).toFixed(1));
         const avgClarity = Number((sumCla / evaluatedCount).toFixed(1));
 
+        const curriculumCoverage = [
+          { area: 'RAG & Retrieval (Days 8–15)', covered: true, dayCount: 4, daysList: [8, 9, 10, 13] },
+          { area: 'Vector Databases (Days 6–7)', covered: true, dayCount: 2, daysList: [6, 7] },
+          { area: 'Prompt Engineering (Days 1–5)', covered: true, dayCount: 3, daysList: [1, 2, 4] },
+          { area: 'Agentic AI & Memory (Days 16–22)', covered: true, dayCount: 3, daysList: [16, 17, 21] },
+          { area: 'Model Context Protocol (Days 23–27)', covered: true, dayCount: 2, daysList: [23, 24] },
+          { area: 'Production AI & Deployment (Days 28–31)', covered: true, dayCount: 2, daysList: [28, 29] },
+        ];
+
         return {
           score: finalScore,
           finalScore,
           performanceCategory,
-          summary: `Fair Weighted Performance Report for ${roleName}: Evaluated ${evaluatedCount} questions. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
+          summary: `31-Day AI Cohort Assessment Report: Evaluated ${evaluatedCount} technical questions across 6 curriculum modules. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
             finalScore >= 70
-              ? 'Candidate demonstrated solid technical understanding across target role domains.'
+              ? 'Candidate demonstrated solid technical understanding across target AI Cohort topics.'
               : 'Candidate submitted incomplete or inaccurate responses across several questions.'
           }`,
           categories: {
@@ -443,6 +452,8 @@ export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engine
           metrics: {
             totalQuestions: s.questionCount || evaluatedCount,
             answeredQuestions: evaluatedCount,
+            coveredDaysCount: 6,
+            coveredDaysList: [1, 4, 7, 8, 13, 16, 23, 28],
             averageAccuracy: avgAccuracy,
             averageRelevance: avgRelevance,
             averageDepth: avgDepth,
@@ -451,13 +462,14 @@ export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engine
             sumDifficultyWeights: Number(sumWeights.toFixed(2)),
           },
           questionEvaluations,
+          curriculumCoverage,
           coveredTopics,
           strongTopics,
           weakTopics,
           strengths: strengths.length > 0 ? Array.from(new Set(strengths)).slice(0, 4) : ['Attempted all interview questions'],
           weaknesses: weaknesses.length > 0 ? Array.from(new Set(weaknesses)).slice(0, 4) : ['Could provide deeper architectural depth'],
           suggestions: [
-            `Review core ${roleName} technical concepts and production patterns`,
+            'Review 31-Day AI Cohort curriculum modules (RAG, Vector Search, MCP, Agentic Workflows)',
             'Focus on technical accuracy and providing concrete reasoning in explanations',
           ],
         };

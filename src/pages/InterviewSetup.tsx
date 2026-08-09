@@ -67,10 +67,10 @@ export default function InterviewSetup() {
 
   const summaryItems = useMemo(
     () => [
-      { label: 'Role', value: config.role },
+      { label: 'Track', value: 'AI Engineering (31-Day Cohort)' },
       { label: 'Experience Level', value: config.experienceLevel },
       { label: 'Interview Type', value: config.interviewType },
-      { label: 'Question Count', value: `${config.questionCount} Questions` },
+      { label: 'Question Count', value: `${config.questionCount} Questions (Min 4 Curriculum Days)` },
     ],
     [config],
   );
@@ -110,20 +110,29 @@ export default function InterviewSetup() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 lg:mt-10 space-y-6 lg:space-y-8">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
-                  Role Target
-                  <select
-                    value={config.role}
-                    onChange={(event) => setConfig((prev) => ({ ...prev, role: event.target.value as RoleOption }))}
-                    className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3.5 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
-                  >
-                    {roleOptions.map((role) => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
-                </label>
+              <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-5 sm:p-6 backdrop-blur-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-sky-500 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                    Dedicated Cohort Track
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-950 dark:text-white">
+                  AI Engineering Interview
+                </h3>
+                <p className="mt-1 text-sm sm:text-base text-slate-600 dark:text-slate-300">
+                  Personalized from your 31-Day AI Cohort learning journey & curriculum source of truth.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {['RAG', 'Vector Databases', 'Prompt Engineering', 'Agentic AI', 'MCP', 'AI Deployment', 'Production AI Systems'].map((tag) => (
+                    <span key={tag} className="rounded-xl border border-sky-400/30 bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-800 dark:text-sky-200">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
+              <div className="grid gap-6 sm:grid-cols-2">
                 <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   Experience Level
                   <select
@@ -136,9 +145,7 @@ export default function InterviewSetup() {
                     ))}
                   </select>
                 </label>
-              </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
                 <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   Interview Format
                   <select
@@ -151,7 +158,9 @@ export default function InterviewSetup() {
                     ))}
                   </select>
                 </label>
+              </div>
 
+              <div className="grid gap-6 sm:grid-cols-1">
                 <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   Question Count
                   <select
@@ -160,7 +169,7 @@ export default function InterviewSetup() {
                     className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3.5 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
                   >
                     {questionCounts.map((count) => (
-                      <option key={count} value={count}>{count} Questions</option>
+                      <option key={count} value={count}>{count} Questions (Min 4 Curriculum Days)</option>
                     ))}
                   </select>
                 </label>
