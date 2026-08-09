@@ -377,56 +377,72 @@ export default function createMockProvider(): AIProvider {
     async evaluateAnswer(context) {
       const answerText = String(context.answer ?? '').trim();
       const questionText = String(context.question?.text ?? '').toLowerCase();
+      const difficulty = (context.currentDifficulty as 'easy' | 'medium' | 'hard') || 'medium';
+      const difficultyWeight = difficulty === 'easy' ? 1.0 : difficulty === 'hard' ? 1.25 : 1.1;
       const wordCount = answerText.split(/\s+/).filter(Boolean).length;
 
       // 1. Strict Meaningless & Anti-Gaming Check
       const badCheck = isMeaninglessOrInjection(answerText);
       if (badCheck.isBad) {
+        const accuracy = 0;
+        const relevance = 0;
+        const depth = 0;
+        const clarity = 2;
+        const baseScore = (accuracy * 0.50) + (relevance * 0.20) + (depth * 0.20) + (clarity * 0.10);
+        const weightedScore = baseScore * difficultyWeight;
+
         return {
-          correctness: 0,
-          relevance: 0,
-          technicalDepth: 0,
-          communication: 10,
+          questionText,
+          answerText,
+          difficulty,
+          difficultyWeight,
+          accuracy,
+          relevance,
+          depth,
+          clarity,
+          baseScore: Number(baseScore.toFixed(2)),
+          weightedScore: Number(weightedScore.toFixed(2)),
+          score: Math.round(baseScore * 10),
           strengths: [],
           weaknesses: [`Evaluation Failed: ${badCheck.reason}. Response provided zero technical substance.`],
           missingConcepts: ['Valid technical explanation addressing the question prompt'],
-          assessment: `ZERO SCORE AWARDED: ${badCheck.reason}. Candidate answer failed technical evaluation guidelines.`,
+          assessment: `ZERO ACCURACY: ${badCheck.reason}. Candidate answer failed technical evaluation guidelines.`,
         } as AIEvaluation;
       }
 
       // 2. Identify Question-Specific Key Technical Concepts
-      const currentQuestionItem = cohortQuestionBank.concat(javaBackendQuestionBank, frontendQuestionBank, dataAnalystQuestionBank, devopsQuestionBank).find((q) => questionText.includes(q.topic.toLowerCase()) || questionText.includes(q.text.toLowerCase().slice(0, 30)));
+      const currentQuestionItem = cohortQuestionBank.concat(javaBackendQuestionBank, frontendQuestionBank, dataAnalystQuestionBank, devopsQuestionBank, softwareEngineerQuestionBank).find((q) => questionText.includes(q.topic.toLowerCase()) || questionText.includes(q.text.toLowerCase().slice(0, 30)));
       const requiredConcepts = currentQuestionItem?.keyConcepts ?? ['system', 'architecture', 'data', 'rag', 'vector', 'model', 'agent', 'mcp', 'context', 'token'];
 
       const lowerAnswer = answerText.toLowerCase();
       const matchedConcepts = requiredConcepts.filter((concept) => lowerAnswer.includes(concept));
 
-      let correctnessScore = 0;
-      let relevanceScore = 0;
-      let technicalDepthScore = 0;
-      let communicationScore = 0;
+      let accuracy = 0; // 0-10
+      let relevance = 0; // 0-10
+      let depth = 0; // 0-10
+      let clarity = 0; // 0-10
 
-      // If zero cohort concepts match and word count is generic
       if (matchedConcepts.length === 0) {
-        correctnessScore = 15;
-        relevanceScore = 20;
-        technicalDepthScore = 10;
-        communicationScore = Math.min(40, wordCount * 2);
+        accuracy = 1.5;
+        relevance = 2.0;
+        depth = 1.0;
+        clarity = Math.min(5, wordCount);
       } else {
-        correctnessScore = Math.min(98, 70 + matchedConcepts.length * 10 + Math.min(10, wordCount));
-        relevanceScore = Math.min(98, 80 + matchedConcepts.length * 6);
-        technicalDepthScore = Math.min(98, 65 + matchedConcepts.length * 10);
-        communicationScore = Math.min(98, 75 + Math.min(20, wordCount * 2));
+        accuracy = Math.min(10, 6.5 + matchedConcepts.length * 1.2 + Math.min(1, wordCount * 0.05));
+        relevance = Math.min(10, 7.5 + matchedConcepts.length * 0.8);
+        depth = Math.min(10, 5.5 + matchedConcepts.length * 1.2 + Math.min(2, wordCount * 0.05));
+        clarity = Math.min(10, 7.0 + Math.min(2.5, wordCount * 0.1));
       }
 
-      const isCorrect = correctnessScore >= 75;
-      const isPartial = correctnessScore >= 50 && correctnessScore < 75;
+      const baseScore = (accuracy * 0.50) + (relevance * 0.20) + (depth * 0.20) + (clarity * 0.10);
+      const weightedScore = baseScore * difficultyWeight;
+      const isCorrect = accuracy >= 7.0;
+      const isPartial = accuracy >= 5.0 && accuracy < 7.0;
 
       const strengths = matchedConcepts.length > 0
         ? [`Correctly explained key technical concepts: ${matchedConcepts.join(', ')}`]
-        : ['Provided clear communication structure'];
+        : ['Provided readable text structure'];
 
-      // DO NOT invent weaknesses for correct answers!
       const weaknesses = isCorrect
         ? []
         : matchedConcepts.length === 0
@@ -437,18 +453,25 @@ export default function createMockProvider(): AIProvider {
         ? []
         : requiredConcepts.filter((c) => !matchedConcepts.includes(c));
 
-      let assessmentText = `Correct answer. Candidate demonstrated solid technical understanding of ${matchedConcepts.join(', ')}.`;
+      let assessmentText = `Correct answer (Accuracy: ${accuracy.toFixed(1)}/10). Candidate demonstrated solid understanding of ${matchedConcepts.join(', ')}.`;
       if (isPartial) {
-        assessmentText = `Partially correct. Candidate addressed ${matchedConcepts.join(', ')}, but missed ${missingConcepts.join(', ')}.`;
+        assessmentText = `Partially correct (Accuracy: ${accuracy.toFixed(1)}/10). Candidate addressed ${matchedConcepts.join(', ')}, but missed ${missingConcepts.join(', ')}.`;
       } else if (!isCorrect && !isPartial) {
-        assessmentText = `Incorrect response. Answer failed to address required technical concepts (${requiredConcepts.join(', ')}).`;
+        assessmentText = `Incorrect response (Accuracy: ${accuracy.toFixed(1)}/10). Answer failed to address required technical concepts (${requiredConcepts.join(', ')}).`;
       }
 
       return {
-        correctness: correctnessScore,
-        relevance: relevanceScore,
-        technicalDepth: technicalDepthScore,
-        communication: communicationScore,
+        questionText,
+        answerText,
+        difficulty,
+        difficultyWeight,
+        accuracy: Number(accuracy.toFixed(1)),
+        relevance: Number(relevance.toFixed(1)),
+        depth: Number(depth.toFixed(1)),
+        clarity: Number(clarity.toFixed(1)),
+        baseScore: Number(baseScore.toFixed(2)),
+        weightedScore: Number(weightedScore.toFixed(2)),
+        score: Math.round(baseScore * 10),
         strengths,
         weaknesses,
         missingConcepts,
@@ -461,45 +484,86 @@ export default function createMockProvider(): AIProvider {
       const history = context.history || [];
       const candidateMsgs = history.filter((m: any) => m.sender === 'candidate');
 
-      let totalOverall = 0;
-      let totalTech = 0;
-      let totalComm = 0;
+      let sumWeighted = 0;
+      let sumWeights = 0;
+      let sumAcc = 0;
+      let sumRel = 0;
+      let sumDep = 0;
+      let sumCla = 0;
 
       if (evaluations.length > 0) {
         evaluations.forEach((e) => {
-          const qScore = Math.round((e.correctness + e.relevance + e.technicalDepth + e.communication) / 4);
-          totalOverall += qScore;
-          totalTech += Math.round((e.correctness + e.technicalDepth) / 2);
-          totalComm += Math.round((e.relevance + e.communication) / 2);
+          const acc = e.accuracy ?? 5;
+          const rel = e.relevance ?? 5;
+          const dep = e.depth ?? 5;
+          const cla = e.clarity ?? 5;
+          const w = e.difficultyWeight ?? (e.difficulty === 'easy' ? 1.0 : e.difficulty === 'hard' ? 1.25 : 1.1);
+
+          const bScore = (acc * 0.50) + (rel * 0.20) + (dep * 0.20) + (cla * 0.10);
+          const wScore = bScore * w;
+
+          sumAcc += acc;
+          sumRel += rel;
+          sumDep += dep;
+          sumCla += cla;
+          sumWeighted += wScore;
+          sumWeights += w;
         });
       }
 
-      const avgScore = evaluations.length > 0 ? Math.round(totalOverall / evaluations.length) : 0;
-      const avgTech = evaluations.length > 0 ? Math.round(totalTech / evaluations.length) : 0;
-      const avgComm = evaluations.length > 0 ? Math.round(totalComm / evaluations.length) : 0;
+      const totalQ = evaluations.length || candidateMsgs.length || 1;
+      const finalScore10 = sumWeights > 0 ? sumWeighted / sumWeights : 0;
+      const finalScore = Math.max(0, Math.min(100, Math.round(finalScore10 * 10)));
+
+      let performanceCategory: PerformanceCategory = 'Needs Improvement';
+      if (finalScore >= 90) performanceCategory = 'Exceptional';
+      else if (finalScore >= 80) performanceCategory = 'Strong';
+      else if (finalScore >= 70) performanceCategory = 'Good';
+      else if (finalScore >= 60) performanceCategory = 'Average';
+      else if (finalScore >= 50) performanceCategory = 'Needs Improvement';
+      else performanceCategory = 'Weak';
+
+      const avgAccuracy = Number((sumAcc / totalQ).toFixed(1));
+      const avgRelevance = Number((sumRel / totalQ).toFixed(1));
+      const avgDepth = Number((sumDep / totalQ).toFixed(1));
+      const avgClarity = Number((sumCla / totalQ).toFixed(1));
       const role = context.candidate?.role ?? 'AI Engineer';
 
       const allStrengths = Array.from(new Set(evaluations.flatMap((e) => e.strengths || []))).filter(Boolean);
       const allWeaknesses = Array.from(new Set(evaluations.flatMap((e) => e.weaknesses || []))).filter(Boolean);
 
       return {
-        overallScore: avgScore,
-        technicalScore: avgTech,
-        communicationScore: avgComm,
-        problemSolvingScore: Math.max(0, Math.min(99, avgScore)),
-        strengths: allStrengths.length > 0 ? allStrengths : ['Completed 31-Day AI Cohort Interview Session'],
-        weaknesses: allWeaknesses.length > 0 ? allWeaknesses : ['Submitted zero-score or irrelevant answers during technical evaluation'],
-        improvementAreas: [
-          `Review 31-Day AI Cohort curriculum modules (RAG, Vector Search, MCP, Agentic Workflows)`,
-          'Ensure answers directly include core technical concepts rather than generic responses',
-          'Practice structured technical reasoning with concrete system architecture examples',
-        ],
-        recommendedTopics: ['RAG Architectures & Vector DBs', 'Model Context Protocol (MCP)', 'Agentic AI & LangGraph', 'AI Security & Guardrails'],
-        summary: `31-Day AI Cohort Assessment Report: Candidate evaluated for target role ${role} across ${candidateMsgs.length} technical questions. Overall Score: ${avgScore}/100. ${
-          avgScore >= 70
-            ? 'Candidate demonstrated verified technical mastery across AI Cohort topics.'
-            : 'Candidate submitted incomplete, incorrect, or unverified responses. Review core AI Cohort study areas.'
+        score: finalScore,
+        finalScore,
+        performanceCategory,
+        summary: `Weighted Assessment Report for ${role}: Evaluated across ${totalQ} questions. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
+          finalScore >= 70
+            ? 'Candidate demonstrated verified technical mastery and clear reasoning.'
+            : 'Candidate submitted incomplete or inaccurate responses. Review foundational concepts.'
         }`,
+        categories: {
+          technicalKnowledge: Math.round(avgAccuracy * 10),
+          problemSolving: Math.round(avgDepth * 10),
+          communicationSkills: Math.round(avgClarity * 10),
+          answerQuality: Math.round(avgRelevance * 10),
+          confidence: Math.round(finalScore),
+        },
+        metrics: {
+          totalQuestions: totalQ,
+          answeredQuestions: totalQ,
+          averageAccuracy: avgAccuracy,
+          averageRelevance: avgRelevance,
+          averageDepth: avgDepth,
+          averageClarity: avgClarity,
+          sumWeightedScores: Number(sumWeighted.toFixed(2)),
+          sumDifficultyWeights: Number(sumWeights.toFixed(2)),
+        },
+        strengths: allStrengths.length > 0 ? allStrengths : ['Completed full technical interview session'],
+        weaknesses: allWeaknesses.length > 0 ? allWeaknesses : ['Lacked technical precision or trade-off depth'],
+        suggestions: [
+          `Review foundational ${role} concepts and production architecture patterns`,
+          'Focus on technical accuracy and providing concrete reasoning in explanations',
+        ],
       } as AIFeedback;
     },
   };

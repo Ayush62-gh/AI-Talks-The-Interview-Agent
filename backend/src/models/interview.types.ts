@@ -50,10 +50,59 @@ export interface SubmitAnswerResponse {
   feedback?: null;
 }
 
+export type PerformanceCategory =
+  | 'Exceptional'
+  | 'Strong'
+  | 'Good'
+  | 'Average'
+  | 'Needs Improvement'
+  | 'Weak';
+
+export interface QuestionEvaluationDetail {
+  questionId?: string;
+  questionText: string;
+  answerText: string;
+  topic?: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  difficultyWeight: number;
+  accuracy: number;
+  relevance: number;
+  depth: number;
+  clarity: number;
+  baseScore: number;
+  weightedScore: number;
+  assessment: string;
+  strengths: string[];
+  weaknesses: string[];
+  missingConcepts: string[];
+}
+
 export interface InterviewFeedback {
   score: number;
+  finalScore: number;
+  performanceCategory: PerformanceCategory;
   summary: string;
-  categories: Record<string, number>;
+  categories: {
+    technicalKnowledge: number;
+    problemSolving: number;
+    communicationSkills: number;
+    answerQuality: number;
+    confidence: number;
+  };
+  metrics: {
+    totalQuestions: number;
+    answeredQuestions: number;
+    averageAccuracy: number;
+    averageRelevance: number;
+    averageDepth: number;
+    averageClarity: number;
+    sumWeightedScores: number;
+    sumDifficultyWeights: number;
+  };
+  questionEvaluations?: QuestionEvaluationDetail[];
+  coveredTopics: string[];
+  strongTopics: string[];
+  weakTopics: string[];
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
@@ -61,11 +110,19 @@ export interface InterviewFeedback {
 
 export interface InterviewEvaluation {
   questionId?: string;
+  questionText?: string;
+  answerText?: string;
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  difficultyWeight?: number;
+  accuracy?: number;
+  relevance?: number;
+  depth?: number;
+  clarity?: number;
+  baseScore?: number;
+  weightedScore?: number;
   score?: number;
   correctness?: number;
-  relevance?: number;
-  technicalDepth?: number;
-  communication?: number;
   strengths?: string[];
   weaknesses?: string[];
   missingConcepts?: string[];

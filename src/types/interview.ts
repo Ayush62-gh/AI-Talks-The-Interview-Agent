@@ -85,8 +85,37 @@ export interface SubmitAnswerResponse {
   reply?: string;
 }
 
+export type PerformanceCategory =
+  | 'Exceptional'
+  | 'Strong'
+  | 'Good'
+  | 'Average'
+  | 'Needs Improvement'
+  | 'Weak';
+
+export interface QuestionEvaluationDetail {
+  questionId?: string;
+  questionText: string;
+  answerText: string;
+  topic?: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  difficultyWeight: number;
+  accuracy: number;
+  relevance: number;
+  depth: number;
+  clarity: number;
+  baseScore: number;
+  weightedScore: number;
+  assessment: string;
+  strengths: string[];
+  weaknesses: string[];
+  missingConcepts: string[];
+}
+
 export interface InterviewFeedback {
   score: number;
+  finalScore?: number;
+  performanceCategory?: PerformanceCategory;
   summary: string;
   categories: {
     technicalKnowledge: number;
@@ -95,6 +124,20 @@ export interface InterviewFeedback {
     answerQuality: number;
     confidence: number;
   };
+  metrics?: {
+    totalQuestions: number;
+    answeredQuestions: number;
+    averageAccuracy: number;
+    averageRelevance: number;
+    averageDepth: number;
+    averageClarity: number;
+    sumWeightedScores: number;
+    sumDifficultyWeights: number;
+  };
+  questionEvaluations?: QuestionEvaluationDetail[];
+  coveredTopics?: string[];
+  strongTopics?: string[];
+  weakTopics?: string[];
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];

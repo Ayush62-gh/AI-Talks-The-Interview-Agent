@@ -69,9 +69,30 @@ export default function CompletePage() {
                 </p>
               </div>
               <div className="flex flex-col items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 px-6 py-4 backdrop-blur-md">
-                <span className="text-xs font-semibold uppercase tracking-widest text-sky-700 dark:text-sky-300">Overall Score</span>
-                <span className="text-3xl sm:text-4xl font-bold text-slate-950 dark:text-white">{feedback?.score ?? remote?.score ?? 80}/100</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-sky-700 dark:text-sky-300">
+                  {feedback?.performanceCategory ?? remote?.performanceCategory ?? ( (feedback?.score ?? remote?.score ?? 0) >= 90 ? 'Exceptional' : (feedback?.score ?? remote?.score ?? 0) >= 80 ? 'Strong' : (feedback?.score ?? remote?.score ?? 0) >= 70 ? 'Good' : (feedback?.score ?? remote?.score ?? 0) >= 60 ? 'Average' : (feedback?.score ?? remote?.score ?? 0) >= 50 ? 'Needs Improvement' : 'Weak')}
+                </span>
+                <span className="text-3xl sm:text-4xl font-bold text-slate-950 dark:text-white">{feedback?.score ?? remote?.score ?? 0}/100</span>
               </div>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Accuracy (50%)</span>
+              <span className="mt-1 block text-lg font-bold text-sky-600 dark:text-sky-400">{feedback?.metrics?.averageAccuracy ?? remote?.metrics?.averageAccuracy ?? 0}/10</span>
+            </div>
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Relevance (20%)</span>
+              <span className="mt-1 block text-lg font-bold text-emerald-600 dark:text-emerald-400">{feedback?.metrics?.averageRelevance ?? remote?.metrics?.averageRelevance ?? 0}/10</span>
+            </div>
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Depth (20%)</span>
+              <span className="mt-1 block text-lg font-bold text-indigo-600 dark:text-indigo-400">{feedback?.metrics?.averageDepth ?? remote?.metrics?.averageDepth ?? 0}/10</span>
+            </div>
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Clarity (10%)</span>
+              <span className="mt-1 block text-lg font-bold text-purple-600 dark:text-purple-400">{feedback?.metrics?.averageClarity ?? remote?.metrics?.averageClarity ?? 0}/10</span>
             </div>
           </div>
 

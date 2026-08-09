@@ -5,6 +5,8 @@ import {
   StartInterviewResponse,
   SubmitAnswerResponse,
   InterviewFeedback,
+  PerformanceCategory,
+  QuestionEvaluationDetail,
 } from '../types/interview';
 
 const apiBaseUrl =
@@ -192,15 +194,47 @@ const roleFallbackBanks: Record<string, string[]> = {
   ],
 };
 
-export function evaluateAnswerQuality(questionText: string, answerText: string, role: string): { score: number; feedbackText: string; isWrong: boolean } {
+export interface DetailedEvaluationResult {
+  accuracy: number; // 0-10
+  relevance: number; // 0-10
+  depth: number; // 0-10
+  clarity: number; // 0-10
+  baseScore: number; // (Accuracy * 0.5) + (Relevance * 0.2) + (Depth * 0.2) + (Clarity * 0.1)
+  difficultyWeight: number; // 1.0, 1.1, 1.25
+  weightedScore: number; // baseScore * difficultyWeight
+  score: number; // 0-100
+  feedbackText: string;
+  isWrong: boolean;
+}
+
+export function evaluateAnswerQuality(
+  questionText: string,
+  answerText: string,
+  role: string,
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+): DetailedEvaluationResult {
   const clean = (answerText || '').trim().toLowerCase();
   const wordCount = clean.split(/\s+/).filter(Boolean).length;
+  const difficultyWeight = difficulty === 'easy' ? 1.0 : difficulty === 'hard' ? 1.25 : 1.1;
 
   // 1. Anti-gaming / Filler / Empty / Nonsense check
   const fillerWords = new Set(['idk', "i don't know", 'dunno', 'test', 'asdf', 'asdfghjkl', 'whatever', 'abcd', '123', 'hello', 'hi', 'ok', 'okay', 'yes', 'no']);
   if (clean.length === 0 || fillerWords.has(clean) || (wordCount < 3 && !clean.includes('rag') && !clean.includes('sql') && !clean.includes('jvm') && !clean.includes('mcp') && !clean.includes('api'))) {
+    const accuracy = 0.5;
+    const relevance = 1.0;
+    const depth = 0.5;
+    const clarity = Math.min(4, wordCount * 1.5);
+    const baseScore = (accuracy * 0.50) + (relevance * 0.20) + (depth * 0.20) + (clarity * 0.10);
+    const weightedScore = baseScore * difficultyWeight;
     return {
-      score: 15,
+      accuracy,
+      relevance,
+      depth,
+      clarity,
+      baseScore: Number(baseScore.toFixed(2)),
+      difficultyWeight,
+      weightedScore: Number(weightedScore.toFixed(2)),
+      score: Math.round(baseScore * 10),
       isWrong: true,
       feedbackText: 'Answer was incorrect or contained non-technical filler text.',
     };
@@ -208,8 +242,21 @@ export function evaluateAnswerQuality(questionText: string, answerText: string, 
 
   // 2. Anti-prompt injection check
   if (/ignore (previous|all) (instructions|rules)/i.test(clean) || /give (me|100) (marks|points|score)/i.test(clean)) {
+    const accuracy = 0;
+    const relevance = 0;
+    const depth = 0;
+    const clarity = 2;
+    const baseScore = (accuracy * 0.50) + (relevance * 0.20) + (depth * 0.20) + (clarity * 0.10);
+    const weightedScore = baseScore * difficultyWeight;
     return {
-      score: 10,
+      accuracy,
+      relevance,
+      depth,
+      clarity,
+      baseScore: Number(baseScore.toFixed(2)),
+      difficultyWeight,
+      weightedScore: Number(weightedScore.toFixed(2)),
+      score: Math.round(baseScore * 10),
       isWrong: true,
       feedbackText: 'Prompt override attempt detected. Score penalized.',
     };
@@ -242,27 +289,45 @@ export function evaluateAnswerQuality(questionText: string, answerText: string, 
   const matchedKeywords = targetKeywords.filter((word) => clean.includes(word));
   const uniqueMatches = Array.from(new Set(matchedKeywords));
 
+  let accuracy = 0; // 0-10
+  let relevance = 0; // 0-10
+  let depth = 0; // 0-10
+  let clarity = 0; // 0-10
+
   if (uniqueMatches.length === 0) {
-    return {
-      score: 25,
-      isWrong: true,
-      feedbackText: 'Answer lacked required technical terminology for this specific question.',
-    };
+    accuracy = 2.0;
+    relevance = 3.0;
+    depth = 1.5;
+    clarity = Math.min(6, wordCount * 0.5);
+  } else if (uniqueMatches.length === 1 && wordCount < 10) {
+    accuracy = 5.5;
+    relevance = 6.5;
+    depth = 4.5;
+    clarity = 7.0;
+  } else {
+    accuracy = Math.min(10, 6.8 + uniqueMatches.length * 1.0 + Math.min(1, wordCount * 0.05));
+    relevance = Math.min(10, 7.5 + uniqueMatches.length * 0.8);
+    depth = Math.min(10, 5.8 + uniqueMatches.length * 1.1 + Math.min(2, wordCount * 0.05));
+    clarity = Math.min(10, 7.5 + Math.min(2.5, wordCount * 0.1));
   }
 
-  if (uniqueMatches.length === 1 && wordCount < 10) {
-    return {
-      score: 55,
-      isWrong: false,
-      feedbackText: `Partially correct. Mentioned ${uniqueMatches[0]}, but missing architectural details.`,
-    };
-  }
+  const baseScore = (accuracy * 0.50) + (relevance * 0.20) + (depth * 0.20) + (clarity * 0.10);
+  const weightedScore = baseScore * difficultyWeight;
+  const isWrong = accuracy < 5.0;
 
-  const calculatedScore = Math.min(96, Math.max(75, 70 + uniqueMatches.length * 6 + Math.min(10, wordCount)));
   return {
-    score: calculatedScore,
-    isWrong: false,
-    feedbackText: `Excellent explanation covering ${uniqueMatches.slice(0, 3).join(', ')}.`,
+    accuracy: Number(accuracy.toFixed(1)),
+    relevance: Number(relevance.toFixed(1)),
+    depth: Number(depth.toFixed(1)),
+    clarity: Number(clarity.toFixed(1)),
+    baseScore: Number(baseScore.toFixed(2)),
+    difficultyWeight,
+    weightedScore: Number(weightedScore.toFixed(2)),
+    score: Math.round(baseScore * 10),
+    isWrong,
+    feedbackText: isWrong
+      ? 'Answer lacked required technical terminology for this specific question.'
+      : `Good technical explanation covering ${uniqueMatches.slice(0, 3).join(', ')}.`,
   };
 }
 
@@ -283,51 +348,117 @@ export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engine
       const questions: any[] = s.questions || [];
       const answers: Record<string, string> = s.answers || {};
 
-      let totalScore = 0;
+      let sumWeighted = 0;
+      let sumWeights = 0;
+      let sumAcc = 0;
+      let sumRel = 0;
+      let sumDep = 0;
+      let sumCla = 0;
       let evaluatedCount = 0;
+
+      const questionEvaluations: QuestionEvaluationDetail[] = [];
       const strengths: string[] = [];
       const weaknesses: string[] = [];
+      const coveredTopics: string[] = [];
+      const strongTopics: string[] = [];
+      const weakTopics: string[] = [];
 
       questions.forEach((q) => {
         const ans = answers[q.id] || q.answer || '';
+        const topicName = q.topic || 'Role Fundamentals';
+        if (!coveredTopics.includes(topicName)) coveredTopics.push(topicName);
+
         if (ans) {
-          const evalRes = evaluateAnswerQuality(q.question || '', ans, roleName);
-          totalScore += evalRes.score;
+          const evalRes = evaluateAnswerQuality(q.question || '', ans, roleName, 'medium');
+          sumWeighted += evalRes.weightedScore;
+          sumWeights += evalRes.difficultyWeight;
+          sumAcc += evalRes.accuracy;
+          sumRel += evalRes.relevance;
+          sumDep += evalRes.depth;
+          sumCla += evalRes.clarity;
           evaluatedCount++;
+
+          questionEvaluations.push({
+            questionId: q.id,
+            questionText: q.question || '',
+            answerText: ans,
+            topic: topicName,
+            difficulty: 'medium',
+            difficultyWeight: evalRes.difficultyWeight,
+            accuracy: evalRes.accuracy,
+            relevance: evalRes.relevance,
+            depth: evalRes.depth,
+            clarity: evalRes.clarity,
+            baseScore: evalRes.baseScore,
+            weightedScore: evalRes.weightedScore,
+            assessment: evalRes.feedbackText,
+            strengths: evalRes.isWrong ? [] : [`Understands ${topicName}`],
+            weaknesses: evalRes.isWrong ? [`Needs improvement on ${topicName}`] : [],
+            missingConcepts: evalRes.isWrong ? [topicName] : [],
+          });
+
           if (evalRes.isWrong) {
-            weaknesses.push(`Struggled with ${q.question?.slice(0, 40)}...`);
+            weaknesses.push(`Struggled with ${q.question?.slice(0, 35)}...`);
+            if (!weakTopics.includes(topicName)) weakTopics.push(topicName);
           } else {
-            strengths.push(`Good technical knowledge on ${q.question?.slice(0, 40)}...`);
+            strengths.push(`Good grasp on ${q.question?.slice(0, 35)}...`);
+            if (!strongTopics.includes(topicName)) strongTopics.push(topicName);
           }
         }
       });
 
-      if (evaluatedCount > 0) {
-        const finalScore = Math.round(totalScore / s.questionCount || evaluatedCount);
-        const techScore = Math.min(100, Math.max(10, finalScore + 2));
-        const probScore = Math.min(100, Math.max(10, finalScore - 2));
-        const commScore = Math.min(100, Math.max(10, finalScore + 1));
+      if (evaluatedCount > 0 && sumWeights > 0) {
+        const finalScore10 = sumWeighted / sumWeights;
+        const finalScore = Math.max(0, Math.min(100, Math.round(finalScore10 * 10)));
+
+        let performanceCategory: PerformanceCategory = 'Needs Improvement';
+        if (finalScore >= 90) performanceCategory = 'Exceptional';
+        else if (finalScore >= 80) performanceCategory = 'Strong';
+        else if (finalScore >= 70) performanceCategory = 'Good';
+        else if (finalScore >= 60) performanceCategory = 'Average';
+        else if (finalScore >= 50) performanceCategory = 'Needs Improvement';
+        else performanceCategory = 'Weak';
+
+        const avgAccuracy = Number((sumAcc / evaluatedCount).toFixed(1));
+        const avgRelevance = Number((sumRel / evaluatedCount).toFixed(1));
+        const avgDepth = Number((sumDep / evaluatedCount).toFixed(1));
+        const avgClarity = Number((sumCla / evaluatedCount).toFixed(1));
 
         return {
           score: finalScore,
-          summary:
-            finalScore >= 75
-              ? `Strong Interview Performance (${finalScore}/100): Candidate demonstrated solid technical understanding across target role domains.`
-              : finalScore >= 50
-              ? `Average Interview Performance (${finalScore}/100): Candidate showed basic familiarity with role concepts but missed advanced architectural trade-offs.`
-              : `Needs Improvement (${finalScore}/100): Candidate submitted multiple incorrect, filler, or unverified responses across technical questions.`,
+          finalScore,
+          performanceCategory,
+          summary: `Fair Weighted Performance Report for ${roleName}: Evaluated ${evaluatedCount} questions. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
+            finalScore >= 70
+              ? 'Candidate demonstrated solid technical understanding across target role domains.'
+              : 'Candidate submitted incomplete or inaccurate responses across several questions.'
+          }`,
           categories: {
-            technicalKnowledge: techScore,
-            problemSolving: probScore,
-            communicationSkills: commScore,
-            answerQuality: finalScore,
-            confidence: finalScore,
+            technicalKnowledge: Math.round(avgAccuracy * 10),
+            problemSolving: Math.round(avgDepth * 10),
+            communicationSkills: Math.round(avgClarity * 10),
+            answerQuality: Math.round(avgRelevance * 10),
+            confidence: Math.round(finalScore),
           },
+          metrics: {
+            totalQuestions: s.questionCount || evaluatedCount,
+            answeredQuestions: evaluatedCount,
+            averageAccuracy: avgAccuracy,
+            averageRelevance: avgRelevance,
+            averageDepth: avgDepth,
+            averageClarity: avgClarity,
+            sumWeightedScores: Number(sumWeighted.toFixed(2)),
+            sumDifficultyWeights: Number(sumWeights.toFixed(2)),
+          },
+          questionEvaluations,
+          coveredTopics,
+          strongTopics,
+          weakTopics,
           strengths: strengths.length > 0 ? Array.from(new Set(strengths)).slice(0, 4) : ['Attempted all interview questions'],
           weaknesses: weaknesses.length > 0 ? Array.from(new Set(weaknesses)).slice(0, 4) : ['Could provide deeper architectural depth'],
           suggestions: [
             `Review core ${roleName} technical concepts and production patterns`,
-            'Practice structured technical reasoning with concrete architectural examples',
+            'Focus on technical accuracy and providing concrete reasoning in explanations',
           ],
         };
       }
@@ -337,14 +468,26 @@ export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engine
   }
 
   return {
-    score: 45,
+    score: 35,
+    finalScore: 35,
+    performanceCategory: 'Weak',
     summary: 'Incomplete or unverified response data. Candidate requires further technical review.',
     categories: {
-      technicalKnowledge: 45,
-      problemSolving: 40,
-      communicationSkills: 50,
-      answerQuality: 45,
-      confidence: 45,
+      technicalKnowledge: 35,
+      problemSolving: 30,
+      communicationSkills: 40,
+      answerQuality: 35,
+      confidence: 35,
+    },
+    metrics: {
+      totalQuestions: 1,
+      answeredQuestions: 0,
+      averageAccuracy: 3.5,
+      averageRelevance: 3.5,
+      averageDepth: 3.0,
+      averageClarity: 4.0,
+      sumWeightedScores: 3.5,
+      sumDifficultyWeights: 1.0,
     },
     strengths: ['Started session setup'],
     weaknesses: ['Did not complete sufficient verified technical answers'],
