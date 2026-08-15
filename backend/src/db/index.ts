@@ -4,16 +4,21 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema.js';
 
-const databasePath = process.env.DATABASE_URL || './data/interview.db';
-const resolvedPath = path.isAbsolute(databasePath) ? databasePath : path.resolve(process.cwd(), databasePath);
-
-mkdirSync(path.dirname(resolvedPath), { recursive: true });
+function getResolvedDatabasePath(): string {
+  const isVercel = Boolean(process.env.VERCEL);
+  const rawPath = process.env.DATABASE_URL;
+  if (isVercel && (!rawPath || !path.isAbsolute(rawPath) || rawPath.includes('data'))) {
+    return '/tmp/interview.db';
+  }
+  const targetPath = rawPath || './data/interview.db';
+  return path.isAbsolute(targetPath) ? targetPath : path.resolve(process.cwd(), targetPath);
+}
 
 let dbInstance: Database.Database | null = null;
 let drizzleDb: ReturnType<typeof drizzle> | null = null;
 
 export function getDatabasePath() {
-  return resolvedPath;
+  return getResolvedDatabasePath();
 }
 
 function applyMigrations() {
@@ -40,6 +45,13 @@ export function initializeDatabase() {
   }
 
   try {
+    const resolvedPath = getResolvedDatabasePath();
+    try {
+      mkdirSync(path.dirname(resolvedPath), { recursive: true });
+    } catch {
+      // Ignore directory creation failure if path exists or system is read-only
+    }
+
     dbInstance = new Database(resolvedPath);
     dbInstance.pragma('journal_mode = WAL');
     drizzleDb = drizzle(dbInstance, { schema });

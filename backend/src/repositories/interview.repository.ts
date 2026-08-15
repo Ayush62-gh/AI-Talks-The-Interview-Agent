@@ -6,8 +6,12 @@ interface RepositoryFile {
   sessions: Record<string, InterviewSession>;
 }
 
-const dataDir = path.resolve(process.cwd(), 'data');
-const dataFile = path.join(dataDir, 'interviews.json');
+function getDataPaths() {
+  const isVercel = Boolean(process.env.VERCEL);
+  const dataDir = isVercel ? '/tmp/data' : path.resolve(process.cwd(), 'data');
+  const dataFile = path.join(dataDir, 'interviews.json');
+  return { dataDir, dataFile };
+}
 
 let initialized = false;
 let sessionsCache = new Map<string, InterviewSession>();
@@ -17,26 +21,51 @@ function ensureInitialized() {
     return;
   }
 
-  mkdirSync(dataDir, { recursive: true });
-
-  if (!existsSync(dataFile)) {
-    writeFileSync(dataFile, JSON.stringify({ sessions: {} }, null, 2), 'utf8');
-  }
-
-  const raw = readFileSync(dataFile, 'utf8');
-  const parsed = JSON.parse(raw) as Partial<RepositoryFile>;
-  const entries = parsed.sessions ?? {};
-
-  sessionsCache = new Map(Object.entries(entries) as Array<[string, InterviewSession]>);
   initialized = true;
+
+  try {
+    const { dataDir, dataFile } = getDataPaths();
+    try {
+      mkdirSync(dataDir, { recursive: true });
+    } catch {
+      // Directory creation ignored if read-only
+    }
+
+    if (!existsSync(dataFile)) {
+      try {
+        writeFileSync(dataFile, JSON.stringify({ sessions: {} }, null, 2), 'utf8');
+      } catch {
+        // File creation ignored if read-only
+      }
+    }
+
+    if (existsSync(dataFile)) {
+      const raw = readFileSync(dataFile, 'utf8');
+      const parsed = JSON.parse(raw) as Partial<RepositoryFile>;
+      const entries = parsed.sessions ?? {};
+      sessionsCache = new Map(Object.entries(entries) as Array<[string, InterviewSession]>);
+    }
+  } catch (err: any) {
+    console.warn(`[Repository] Disk persistence unavailable: ${err?.message ?? err}. Operating in-memory.`);
+  }
 }
 
 function persist() {
   ensureInitialized();
-  const payload: RepositoryFile = {
-    sessions: Object.fromEntries(sessionsCache.entries()),
-  };
-  writeFileSync(dataFile, JSON.stringify(payload, null, 2), 'utf8');
+  try {
+    const { dataDir, dataFile } = getDataPaths();
+    try {
+      mkdirSync(dataDir, { recursive: true });
+    } catch {
+      // Ignore
+    }
+    const payload: RepositoryFile = {
+      sessions: Object.fromEntries(sessionsCache.entries()),
+    };
+    writeFileSync(dataFile, JSON.stringify(payload, null, 2), 'utf8');
+  } catch (err: any) {
+    // Disk write error caught silently; in-memory state preserved
+  }
 }
 
 export function saveSessionRecord(session: InterviewSession): InterviewSession {
