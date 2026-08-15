@@ -63,21 +63,9 @@ export async function startInterview(config: InterviewConfig): Promise<StartInte
       done: data.done ?? false,
       feedback: data.feedback,
     };
-  } catch (error) {
-    console.warn('Backend API request failed, utilizing client fallback mode:', error);
-    const fallbackText = getInitialFallbackQuestion(config.role);
-    const fallbackSessionId = `S-VERCEL-${Date.now().toString(36).slice(-6)}`;
-    return {
-      sessionId: fallbackSessionId,
-      firstQuestion: {
-        questionId: `q-fallback-${Date.now()}`,
-        text: fallbackText,
-      },
-      progress: 0,
-      totalQuestions: config.questionCount,
-      reply: fallbackText,
-      done: false,
-    };
+  } catch (error: any) {
+    const serverMessage = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+    throw new Error(serverMessage || 'AI Service Unavailable. Unable to start interview session.');
   }
 }
 
@@ -560,34 +548,9 @@ export async function submitAnswer(
       progress: data.progress ?? currentIdx + 1,
       done: false,
     };
-  } catch (error) {
-    console.warn('Backend API submitAnswer failed, utilizing client fallback mode:', error);
-
-    const nextIdx = currentIdx + 1;
-    const isDone = currentIdx >= total || nextIdx > total;
-
-    if (isDone) {
-      const fallbackFeedback = generateDynamicFeedbackFromSession(role);
-      return {
-        nextQuestion: null,
-        reply: 'Interview completed successfully!',
-        progress: total,
-        done: true,
-        feedback: fallbackFeedback,
-      };
-    }
-
-    const nextQuestionText = getFallbackNextQuestion(role, asked, nextIdx);
-
-    return {
-      nextQuestion: {
-        questionId: `q-${role.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`,
-        text: nextQuestionText,
-      },
-      reply: nextQuestionText,
-      progress: nextIdx,
-      done: false,
-    };
+  } catch (error: any) {
+    const serverMessage = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+    throw new Error(serverMessage || 'AI Service Unavailable. Unable to submit answer.');
   }
 }
 
@@ -611,8 +574,8 @@ export async function fetchInterviewFeedback(sessionId: string): Promise<Intervi
       weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? ((data as Record<string, unknown>).weaknesses as string[]) : ['Architectural trade-offs'],
       suggestions: Array.isArray((data as Record<string, unknown>).suggestions) ? ((data as Record<string, unknown>).suggestions as string[]) : ['Review core domain topics'],
     };
-  } catch (error) {
-    console.warn('Backend API fetchInterviewFeedback failed, utilizing dynamic session score:', error);
-    return generateDynamicFeedbackFromSession();
+  } catch (error: any) {
+    const serverMessage = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+    throw new Error(serverMessage || 'AI Feedback Unavailable.');
   }
 }
