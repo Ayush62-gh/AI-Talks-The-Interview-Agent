@@ -5,11 +5,12 @@ import { buildQuestionPrompt, buildEvaluationPrompt, buildFeedbackPrompt } from 
 
 function getGeminiApiKey(): string {
   const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
-  return key.trim();
+  return key.trim().replace(/^['"]|['"]$/g, '');
 }
 
 function getGeminiModel(): string {
-  return env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const raw = env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  return raw.trim().replace(/^['"]|['"]$/g, '');
 }
 
 function getGeminiClient(): GoogleGenAI {
@@ -18,6 +19,23 @@ function getGeminiClient(): GoogleGenAI {
     throw new Error('GEMINI_API_KEY is not configured in backend environment');
   }
   return new GoogleGenAI({ apiKey });
+}
+
+function formatGeminiError(err: any): string {
+  if (!err) return 'Unknown Gemini Error';
+  if (typeof err === 'string') return err;
+
+  const msg = err.message || err.error?.message || err.statusText || (typeof err.error === 'string' ? err.error : '');
+  const code = err.code || err.status || err.error?.code || '';
+  const status = err.statusText || err.status || err.error?.status || '';
+
+  const parts = [
+    code ? `[Code ${code}]` : '',
+    status && status !== code ? `[Status ${status}]` : '',
+    msg ? msg : JSON.stringify(err),
+  ].filter(Boolean);
+
+  return parts.join(' ') || 'Gemini API call failed';
 }
 
 function parseJSONResponse<T>(text: string): T {
@@ -73,8 +91,9 @@ export default function createGeminiProvider(): AIProvider {
           difficulty: parsed.difficulty || 'medium',
         };
       } catch (err: any) {
-        console.error(`[Gemini Error] generateQuestion failed: ${err?.message || err}`);
-        throw new Error(`Gemini Provider Error: ${err?.message || 'Failed to generate question from Gemini'}`);
+        const formatted = formatGeminiError(err);
+        console.error(`[Gemini Error] generateQuestion failed (Model "${getGeminiModel()}"): ${formatted}`);
+        throw new Error(`Gemini Provider Error: ${formatted}`);
       }
     },
 
@@ -121,8 +140,9 @@ export default function createGeminiProvider(): AIProvider {
           assessment: String(parsed.assessment || 'Answer evaluated by Gemini LLM.'),
         };
       } catch (err: any) {
-        console.error(`[Gemini Error] evaluateAnswer failed: ${err?.message || err}`);
-        throw new Error(`Gemini Provider Error: ${err?.message || 'Failed to evaluate answer using Gemini'}`);
+        const formatted = formatGeminiError(err);
+        console.error(`[Gemini Error] evaluateAnswer failed (Model "${getGeminiModel()}"): ${formatted}`);
+        throw new Error(`Gemini Provider Error: ${formatted}`);
       }
     },
 
@@ -172,8 +192,9 @@ export default function createGeminiProvider(): AIProvider {
           summary: String(parsed.summary || `Executive Evaluation Report for ${role}.`),
         };
       } catch (err: any) {
-        console.error(`[Gemini Error] generateFeedback failed: ${err?.message || err}`);
-        throw new Error(`Gemini Provider Error: ${err?.message || 'Failed to generate feedback from Gemini'}`);
+        const formatted = formatGeminiError(err);
+        console.error(`[Gemini Error] generateFeedback failed (Model "${getGeminiModel()}"): ${formatted}`);
+        throw new Error(`Gemini Provider Error: ${formatted}`);
       }
     },
   };
