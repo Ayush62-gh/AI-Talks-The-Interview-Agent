@@ -9,7 +9,7 @@ function getGeminiApiKey(): string {
 }
 
 function getGeminiModel(): string {
-  return env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  return env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 }
 
 function getGeminiClient(): GoogleGenAI {
