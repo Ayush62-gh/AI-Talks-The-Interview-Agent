@@ -23,19 +23,38 @@ function getGeminiClient(): GoogleGenAI {
 
 function formatGeminiError(err: any): string {
   if (!err) return 'Unknown Gemini Error';
-  if (typeof err === 'string') return err;
 
-  const msg = err.message || err.error?.message || err.statusText || (typeof err.error === 'string' ? err.error : '');
-  const code = err.code || err.status || err.error?.code || '';
-  const status = err.statusText || err.status || err.error?.status || '';
+  const constructorName = err?.constructor?.name || typeof err;
+  const status = err?.status ?? err?.code ?? 'N/A';
+  const rawMessage = err?.message ?? (typeof err === 'string' ? err : '');
 
-  const parts = [
-    code ? `[Code ${code}]` : '',
-    status && status !== code ? `[Status ${status}]` : '',
-    msg ? msg : JSON.stringify(err),
-  ].filter(Boolean);
+  let parsedInnerMessage = '';
+  if (typeof rawMessage === 'string' && rawMessage.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(rawMessage);
+      parsedInnerMessage = parsed.error?.message || parsed.message || rawMessage;
+    } catch {
+      parsedInnerMessage = rawMessage;
+    }
+  } else {
+    parsedInnerMessage = String(rawMessage);
+  }
 
-  return parts.join(' ') || 'Gemini API call failed';
+  const innerErr = err?.error || {};
+  const innerMsg = innerErr.message || parsedInnerMessage || 'No message provided';
+  const innerCode = err?.code || innerErr.code || 'N/A';
+  const statusText = err?.statusText || innerErr.status || 'N/A';
+
+  const stringifiedObj = (() => {
+    try {
+      return JSON.stringify(err, Object.getOwnPropertyNames(err));
+    } catch {
+      return String(err);
+    }
+  })();
+
+  const summaryText = `[Constructor: ${constructorName}] [Status: ${status}] [Code: ${innerCode}] [StatusText: ${statusText}] [Message: ${innerMsg}] [FullBody: ${stringifiedObj}]`;
+  return summaryText.replace(/AIzaSy[A-Za-z0-9_-]{35}/g, '[REDACTED_KEY]');
 }
 
 function parseJSONResponse<T>(text: string): T {
@@ -57,7 +76,9 @@ export default function createGeminiProvider(): AIProvider {
   return {
     async generateQuestion(context: Record<string, any>): Promise<AIQuestion> {
       const role = String(context.candidate?.role ?? 'AI Engineer');
-      console.log(`[AI Provider] Gemini - Generating question for role "${role}"`);
+      const modelName = getGeminiModel();
+      const hasApiKey = Boolean(getGeminiApiKey());
+      console.log(`[AI Provider] Gemini - Generating question for role "${role}" | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey}`);
 
       try {
         const ai = getGeminiClient();
@@ -92,7 +113,7 @@ export default function createGeminiProvider(): AIProvider {
         };
       } catch (err: any) {
         const formatted = formatGeminiError(err);
-        console.error(`[Gemini Error] generateQuestion failed (Model "${getGeminiModel()}"): ${formatted}`);
+        console.error(`[Gemini Error] generateQuestion failed | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey} | Error:\n${formatted}`);
         throw new Error(`Gemini Provider Error: ${formatted}`);
       }
     },
