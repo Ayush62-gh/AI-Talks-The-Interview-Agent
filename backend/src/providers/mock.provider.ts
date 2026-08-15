@@ -255,8 +255,18 @@ function getAdaptiveQuestion(context: Record<string, any>): AIQuestion {
     }
   }
 
-  // The 31-Day AI Cohort Curriculum is the SINGLE source of truth for all interview questions
-  const roleBank = cohortQuestionBank;
+  let roleBank = cohortQuestionBank;
+  if (role === 'Java Backend Developer') {
+    roleBank = javaBackendQuestionBank;
+  } else if (role === 'Frontend Developer') {
+    roleBank = frontendQuestionBank;
+  } else if (role === 'Data Analyst') {
+    roleBank = dataAnalystQuestionBank;
+  } else if (role === 'DevOps Engineer') {
+    roleBank = devopsQuestionBank;
+  } else if (role === 'Backend Developer' || role === 'Full Stack Developer' || role === 'Software Engineer') {
+    roleBank = softwareEngineerQuestionBank;
+  }
 
   // Filter out any questions that match or are similar to previously asked questions
   let candidates = roleBank.filter((q) => q.difficulty === targetDifficulty && !isQuestionDuplicateOrSimilar(q.text, askedQuestions));
@@ -381,22 +391,15 @@ export default function createMockProvider(): AIProvider {
         const weightedScore = baseScore * difficultyWeight;
 
         return {
-          questionText,
-          answerText,
-          difficulty,
-          difficultyWeight,
-          accuracy,
-          relevance,
-          depth,
-          clarity,
-          baseScore: Number(baseScore.toFixed(2)),
-          weightedScore: Number(weightedScore.toFixed(2)),
-          score: Math.round(baseScore * 10),
+          correctness: Math.round(baseScore * 10),
+          relevance: Math.round(relevance * 10),
+          technicalDepth: Math.round(depth * 10),
+          communication: Math.round(clarity * 10),
           strengths: [],
           weaknesses: [`Evaluation Failed: ${badCheck.reason}. Response provided zero technical substance.`],
           missingConcepts: ['Valid technical explanation addressing the question prompt'],
           assessment: `ZERO ACCURACY: ${badCheck.reason}. Candidate answer failed technical evaluation guidelines.`,
-        } as AIEvaluation;
+        };
       }
 
       // 2. Identify Question-Specific Key Technical Concepts
@@ -424,7 +427,6 @@ export default function createMockProvider(): AIProvider {
       }
 
       const baseScore = (accuracy * 0.50) + (relevance * 0.20) + (depth * 0.20) + (clarity * 0.10);
-      const weightedScore = baseScore * difficultyWeight;
       const isCorrect = accuracy >= 7.0;
       const isPartial = accuracy >= 5.0 && accuracy < 7.0;
 
@@ -450,26 +452,19 @@ export default function createMockProvider(): AIProvider {
       }
 
       return {
-        questionText,
-        answerText,
-        difficulty,
-        difficultyWeight,
-        accuracy: Number(accuracy.toFixed(1)),
-        relevance: Number(relevance.toFixed(1)),
-        depth: Number(depth.toFixed(1)),
-        clarity: Number(clarity.toFixed(1)),
-        baseScore: Number(baseScore.toFixed(2)),
-        weightedScore: Number(weightedScore.toFixed(2)),
-        score: Math.round(baseScore * 10),
+        correctness: Math.round(baseScore * 10),
+        relevance: Math.round(relevance * 10),
+        technicalDepth: Math.round(depth * 10),
+        communication: Math.round(clarity * 10),
         strengths,
         weaknesses,
         missingConcepts,
         assessment: assessmentText,
-      } as AIEvaluation;
+      };
     },
 
     async generateFeedback(context) {
-      const evaluations: AIEvaluation[] = context.evaluations || [];
+      const evaluations: any[] = context.evaluations || [];
       const history = context.history || [];
       const candidateMsgs = history.filter((m: any) => m.sender === 'candidate');
 
@@ -482,10 +477,10 @@ export default function createMockProvider(): AIProvider {
 
       if (evaluations.length > 0) {
         evaluations.forEach((e) => {
-          const acc = e.accuracy ?? 5;
+          const acc = e.accuracy ?? (e.correctness ? e.correctness / 10 : 5);
           const rel = e.relevance ?? 5;
-          const dep = e.depth ?? 5;
-          const cla = e.clarity ?? 5;
+          const dep = e.technicalDepth ?? e.depth ?? 5;
+          const cla = e.communication ?? e.clarity ?? 5;
           const w = e.difficultyWeight ?? (e.difficulty === 'easy' ? 1.0 : e.difficulty === 'hard' ? 1.25 : 1.1);
 
           const bScore = (acc * 0.50) + (rel * 0.20) + (dep * 0.20) + (cla * 0.10);
@@ -504,71 +499,29 @@ export default function createMockProvider(): AIProvider {
       const finalScore10 = sumWeights > 0 ? sumWeighted / sumWeights : 0;
       const finalScore = Math.max(0, Math.min(100, Math.round(finalScore10 * 10)));
 
-      let performanceCategory: PerformanceCategory = 'Needs Improvement';
-      if (finalScore >= 90) performanceCategory = 'Exceptional';
-      else if (finalScore >= 80) performanceCategory = 'Strong';
-      else if (finalScore >= 70) performanceCategory = 'Good';
-      else if (finalScore >= 60) performanceCategory = 'Average';
-      else if (finalScore >= 50) performanceCategory = 'Needs Improvement';
-      else performanceCategory = 'Weak';
-
       const avgAccuracy = Number((sumAcc / totalQ).toFixed(1));
-      const avgRelevance = Number((sumRel / totalQ).toFixed(1));
-      const avgDepth = Number((sumDep / totalQ).toFixed(1));
       const avgClarity = Number((sumCla / totalQ).toFixed(1));
+      const avgDepth = Number((sumDep / totalQ).toFixed(1));
       const role = context.candidate?.role ?? 'AI Engineer';
 
       const allStrengths = Array.from(new Set(evaluations.flatMap((e) => e.strengths || []))).filter(Boolean);
       const allWeaknesses = Array.from(new Set(evaluations.flatMap((e) => e.weaknesses || []))).filter(Boolean);
 
-      const curriculumCoverage = [
-        { area: 'RAG & Retrieval (Days 8–15)', covered: true, dayCount: 4, daysList: [8, 9, 10, 13] },
-        { area: 'Vector Databases (Days 6–7)', covered: true, dayCount: 2, daysList: [6, 7] },
-        { area: 'Prompt Engineering (Days 1–5)', covered: true, dayCount: 3, daysList: [1, 2, 4] },
-        { area: 'Agentic AI & Memory (Days 16–22)', covered: true, dayCount: 3, daysList: [16, 17, 21] },
-        { area: 'Model Context Protocol (Days 23–27)', covered: true, dayCount: 2, daysList: [23, 24] },
-        { area: 'Production AI & Deployment (Days 28–31)', covered: true, dayCount: 2, daysList: [28, 29] },
-      ];
-
       return {
-        score: finalScore,
-        finalScore,
-        performanceCategory,
-        summary: `31-Day AI Cohort Assessment Report: Candidate evaluated across ${totalQ} questions. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
+        overallScore: finalScore,
+        technicalScore: Math.round(avgAccuracy * 10),
+        communicationScore: Math.round(avgClarity * 10),
+        problemSolvingScore: Math.round(avgDepth * 10),
+        strengths: allStrengths.length > 0 ? allStrengths : ['Completed technical interview session'],
+        weaknesses: allWeaknesses.length > 0 ? allWeaknesses : ['Could elaborate deeper on architectural trade-offs'],
+        improvementAreas: ['Review role-specific technical domain topics', 'Provide deeper technical reasoning'],
+        recommendedTopics: [role, 'System Architecture'],
+        summary: `Assessment Report for ${role}: Candidate evaluated across ${totalQ} questions. Final Score: ${finalScore}/100. ${
           finalScore >= 70
-            ? 'Candidate demonstrated verified technical mastery and clear reasoning across AI Cohort modules.'
-            : 'Candidate submitted incomplete or inaccurate responses. Review core AI Cohort study areas.'
+            ? 'Candidate demonstrated solid technical understanding across target domain topics.'
+            : 'Candidate submitted incomplete or inaccurate responses.'
         }`,
-        categories: {
-          technicalKnowledge: Math.round(avgAccuracy * 10),
-          problemSolving: Math.round(avgDepth * 10),
-          communicationSkills: Math.round(avgClarity * 10),
-          answerQuality: Math.round(avgRelevance * 10),
-          confidence: Math.round(finalScore),
-        },
-        metrics: {
-          totalQuestions: totalQ,
-          answeredQuestions: totalQ,
-          coveredDaysCount: 6,
-          coveredDaysList: [1, 4, 7, 8, 13, 16, 23, 28],
-          averageAccuracy: avgAccuracy,
-          averageRelevance: avgRelevance,
-          averageDepth: avgDepth,
-          averageClarity: avgClarity,
-          sumWeightedScores: Number(sumWeighted.toFixed(2)),
-          sumDifficultyWeights: Number(sumWeights.toFixed(2)),
-        },
-        curriculumCoverage,
-        coveredTopics: ['RAG Architecture', 'Vector Databases & HNSW', 'Prompt Engineering', 'Agentic AI', 'MCP Protocol', 'vLLM & Deployment'],
-        strongTopics: ['RAG & Knowledge Retrieval', 'Vector Embeddings'],
-        weakTopics: ['Production Guardrails & Observability'],
-        strengths: allStrengths.length > 0 ? allStrengths : ['Completed full 31-Day AI Cohort technical interview'],
-        weaknesses: allWeaknesses.length > 0 ? allWeaknesses : ['Lacked technical precision or trade-off depth'],
-        suggestions: [
-          'Review 31-Day AI Cohort curriculum modules (RAG, Vector Search, MCP, Agentic Workflows)',
-          'Focus on technical accuracy and providing concrete reasoning in explanations',
-        ],
-      } as AIFeedback;
+      };
     },
   };
 }

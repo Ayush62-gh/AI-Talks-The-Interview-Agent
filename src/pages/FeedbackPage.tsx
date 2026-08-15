@@ -148,7 +148,7 @@ export default function FeedbackPage() {
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <Button onClick={restartInterview} className="w-full sm:w-auto">Restart Interview</Button>
-                    <Button variant="secondary" onClick={() => navigate('/')} className="w-full sm:w-auto">Try Another Role</Button>
+                    <Button variant="secondary" onClick={() => { restartInterview(); navigate('/'); }} className="w-full sm:w-auto">Try Another Role</Button>
                     <Button variant="ghost" onClick={() => window.print()} className="w-full sm:w-auto">Download Report</Button>
                   </div>
                 </div>

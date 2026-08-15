@@ -13,7 +13,7 @@ export function buildQuestionPrompt(context: Record<string, any>): string {
   const domainProfile = getDomainProfile(role);
   const curriculum = getCurriculumAreas(candidate);
   const progressIdx = context.progress ?? 0;
-  const selectedTopic = domainProfile.progression[progressIdx % domainProfile.progression.length] ?? domainProfile.coreTopics[0] ?? curriculum[0]?.topic ?? 'Core Technical Domain';
+  const selectedTopic = domainProfile.progression[progressIdx % domainProfile.progression.length] ?? domainProfile.coreTopics[0] ?? curriculum[0]?.area ?? 'Core Technical Domain';
   const interviewType = String(candidate.interviewType ?? 'Technical Interview');
   const experienceLevel = String(candidate.experienceLevel ?? 'Junior');
 

@@ -392,7 +392,7 @@ export default function LandingPage() {
           {roles.map((role, index) => {
             const Icon = role.icon;
             return (
-              <motion.button key={role.title} type="button" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.35, delay: index * 0.04 }} onClick={() => navigate('/setup')} className="rounded-[2rem] border border-slate-200/80 bg-white/80 p-7 text-left shadow-sm transition hover:-translate-y-1.5 hover:border-sky-500 dark:border-white/10 dark:bg-slate-900/80">
+              <motion.button key={role.title} type="button" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.35, delay: index * 0.04 }} onClick={() => navigate('/setup', { state: { selectedRole: role.title } })} className="rounded-[2rem] border border-slate-200/80 bg-white/80 p-7 text-left shadow-sm transition hover:-translate-y-1.5 hover:border-sky-500 dark:border-white/10 dark:bg-slate-900/80">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 to-violet-500/20 text-sky-700 dark:text-sky-300">
                   <Icon className="h-6 w-6" />
                 </div>

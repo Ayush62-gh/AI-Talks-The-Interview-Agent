@@ -5,7 +5,10 @@ export type RoleOption =
   | 'Full Stack Developer'
   | 'Product Manager'
   | 'Data Scientist'
-  | 'DevOps Engineer';
+  | 'DevOps Engineer'
+  | 'Java Backend Developer'
+  | 'Data Analyst'
+  | 'AI Engineer';
 
 export type ExperienceLevelOption = 'Fresher' | 'Junior' | 'Mid Level' | 'Senior';
 export type InterviewTypeOption = 'Technical Interview' | 'Behavioral Interview' | 'System Design Interview';
@@ -91,8 +94,8 @@ export interface CurriculumCoverageItem {
 
 export interface InterviewFeedback {
   score: number;
-  finalScore: number;
-  performanceCategory: PerformanceCategory;
+  finalScore?: number;
+  performanceCategory?: PerformanceCategory;
   summary: string;
   categories: {
     technicalKnowledge: number;
@@ -101,7 +104,7 @@ export interface InterviewFeedback {
     answerQuality: number;
     confidence: number;
   };
-  metrics: {
+  metrics?: {
     totalQuestions: number;
     answeredQuestions: number;
     coveredDaysCount?: number;
@@ -115,9 +118,9 @@ export interface InterviewFeedback {
   };
   questionEvaluations?: QuestionEvaluationDetail[];
   curriculumCoverage?: CurriculumCoverageItem[];
-  coveredTopics: string[];
-  strongTopics: string[];
-  weakTopics: string[];
+  coveredTopics?: string[];
+  strongTopics?: string[];
+  weakTopics?: string[];
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
@@ -138,6 +141,8 @@ export interface InterviewEvaluation {
   weightedScore?: number;
   score?: number;
   correctness?: number;
+  technicalDepth?: number;
+  communication?: number;
   strengths?: string[];
   weaknesses?: string[];
   missingConcepts?: string[];

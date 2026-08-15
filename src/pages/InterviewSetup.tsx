@@ -1,43 +1,122 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FaSpinner } from 'react-icons/fa';
 import Button from '../components/Button';
 import { useInterview } from '../hooks/useInterview';
-import { ExperienceLevelOption, InterviewConfig } from '../types/interview';
+import { ExperienceLevelOption, InterviewConfig, RoleOption } from '../types/interview';
+
+const roleOptions: RoleOption[] = [
+  'Software Engineer',
+  'Frontend Developer',
+  'Backend Developer',
+  'Full Stack Developer',
+  'Product Manager',
+  'Data Scientist',
+  'DevOps Engineer',
+  'Java Backend Developer',
+  'Data Analyst',
+  'AI Engineer',
+];
 
 const experienceOptions: ExperienceLevelOption[] = ['Fresher', 'Junior', 'Mid Level', 'Senior'];
 const questionCounts = [8, 10, 15];
 
-const defaultConfig: InterviewConfig = {
-  role: 'AI Engineer',
-  experienceLevel: 'Junior',
-  interviewType: 'Technical Interview',
-  questionCount: 10,
+const ROLE_FOCUS_TOPICS: Record<RoleOption, string> = {
+  'Software Engineer': 'Algorithms • System Design • Software Architecture • Testing • Clean Code',
+  'Frontend Developer': 'JavaScript • React • Browser Architecture • UI Performance • State Management',
+  'Backend Developer': 'APIs • Relational Databases • Distributed Systems • Spring Boot • Microservices & Caching',
+  'Full Stack Developer': 'React Architecture • REST APIs • SQL Data Modeling • Authentication • Full Stack Integration',
+  'Product Manager': 'Product Strategy • Feature Prioritization • User Metrics & Analytics • Agile Workflow',
+  'Data Scientist': 'Machine Learning • Statistics • Python & Pandas • Model Evaluation • Feature Engineering',
+  'DevOps Engineer': 'Docker • Kubernetes • CI/CD • Infrastructure as Code • Cloud Monitoring',
+  'Java Backend Developer': 'JVM Internals • Concurrency & Multithreading • Spring Boot • REST APIs • JPA & Hibernate',
+  'Data Analyst': 'SQL & Window Functions • Python & Pandas • Statistical Analysis • A/B Testing • Data Visualization',
+  'AI Engineer': 'RAG • Vector Databases • Prompt Engineering • Agentic AI • MCP • AI Deployment • Production AI',
+};
+
+const ROLE_JOURNEY: Record<RoleOption, { completed: string[]; needsAssessment: string[] }> = {
+  'AI Engineer': {
+    completed: ['RAG Architecture', 'Vector Search & HNSW', 'Prompt Engineering'],
+    needsAssessment: ['MCP Protocol', 'AI Deployment & vLLM'],
+  },
+  'Backend Developer': {
+    completed: ['REST API Design', 'Relational Databases & SQL', 'Java & Concurrency'],
+    needsAssessment: ['Spring Boot Microservices', 'Redis Caching & Idempotency'],
+  },
+  'Java Backend Developer': {
+    completed: ['JVM Memory & GC', 'HashMap Internals', 'Spring Dependency Injection'],
+    needsAssessment: ['JPA & Hibernate N+1', 'Kafka Event Streaming'],
+  },
+  'Frontend Developer': {
+    completed: ['Event Loop & Microtasks', 'React Virtual DOM', 'Hooks & Memoization'],
+    needsAssessment: ['Browser Rendering Pipeline', 'Vite & Webpack Bundling'],
+  },
+  'Full Stack Developer': {
+    completed: ['React Component Design', 'REST Controller Implementation', 'SQL Schema Design'],
+    needsAssessment: ['Authentication & JWT', 'Distributed System Integration'],
+  },
+  'Software Engineer': {
+    completed: ['Data Structures & Big-O', 'SOLID Design Principles', 'Unit & Integration Testing'],
+    needsAssessment: ['System Design & Scalability', 'Concurrency & Deadlocks'],
+  },
+  'DevOps Engineer': {
+    completed: ['Docker & Multi-Stage Builds', 'Kubernetes Pods & Services', 'CI/CD Pipelines'],
+    needsAssessment: ['Terraform IaC', 'Prometheus & Grafana Monitoring'],
+  },
+  'Data Analyst': {
+    completed: ['SQL Joins & Aggregations', 'Pandas Data Wrangling', 'Data Visualization'],
+    needsAssessment: ['SQL Window Functions', 'Statistical Hypothesis Testing'],
+  },
+  'Data Scientist': {
+    completed: ['Python Data Processing', 'Exploratory Data Analysis', 'Supervised Learning'],
+    needsAssessment: ['Model Evaluation Metrics', 'Feature Engineering'],
+  },
+  'Product Manager': {
+    completed: ['User Requirement Analysis', 'Feature Prioritization', 'Agile Roadmapping'],
+    needsAssessment: ['Product Metrics & Funnels', 'Stakeholder Communication'],
+  },
 };
 
 export default function InterviewSetup() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { startInterview, loading, error: contextError } = useInterview();
-  const [config, setConfig] = useState<InterviewConfig>(defaultConfig);
+
+  const selectedRoleFromState = (location.state as { selectedRole?: RoleOption } | null)?.selectedRole;
+  const initialRole: RoleOption = selectedRoleFromState && roleOptions.includes(selectedRoleFromState)
+    ? selectedRoleFromState
+    : 'Software Engineer';
+
+  const [config, setConfig] = useState<InterviewConfig>({
+    role: initialRole,
+    experienceLevel: 'Junior',
+    interviewType: 'Technical Interview',
+    questionCount: 10,
+  });
+
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const activeError = error || contextError;
 
   const summaryItems = useMemo(
     () => [
-      { label: 'Interview Focus', value: 'AI Engineering' },
+      { label: 'Interview Role', value: config.role },
       { label: 'Experience Level', value: config.experienceLevel },
-      { label: 'Interview Type', value: 'Technical Interview' },
+      { label: 'Interview Type', value: config.interviewType },
       { label: 'Question Count', value: `${config.questionCount} Questions` },
     ],
     [config],
   );
 
+  const journeyData = useMemo(() => {
+    return ROLE_JOURNEY[config.role] || ROLE_JOURNEY['Software Engineer'];
+  }, [config.role]);
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
-    if (!config.experienceLevel || !config.questionCount) {
+    if (!config.role || !config.experienceLevel || !config.questionCount) {
       setError('Please complete all interview configuration fields before continuing.');
       return;
     }
@@ -48,11 +127,7 @@ export default function InterviewSetup() {
 
     setSubmitting(true);
     try {
-      await startInterview({
-        ...config,
-        role: 'AI Engineer',
-        interviewType: 'Technical Interview',
-      });
+      await startInterview(config);
     } catch {
       setError('Unable to start the interview. Please try again.');
     } finally {
@@ -67,12 +142,25 @@ export default function InterviewSetup() {
           <div>
             <div className="space-y-2">
               <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">Session Setup</p>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-950 dark:text-white tracking-tight">Prepare your AI session.</h1>
-              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">Configure your experience level and interview format.</p>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-950 dark:text-white tracking-tight">Prepare your interview session.</h1>
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">Configure your target role, experience level, and interview format.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
+                <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Interview Role
+                  <select
+                    value={config.role}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, role: event.target.value as RoleOption }))}
+                    className="w-full rounded-2xl border border-slate-300/80 bg-white px-4 py-3 text-sm sm:text-base text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {roleOptions.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </label>
+
                 <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   Experience Level
                   <select
@@ -85,16 +173,16 @@ export default function InterviewSetup() {
                     ))}
                   </select>
                 </label>
+              </div>
 
+              <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   <span className="block">Interview Type</span>
                   <div className="w-full rounded-2xl border border-slate-200/90 bg-slate-100/80 px-4 py-3 text-sm sm:text-base font-medium text-slate-700 dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-300">
-                    Technical Interview
+                    {config.interviewType}
                   </div>
                 </div>
-              </div>
 
-              <div className="grid gap-5 sm:grid-cols-1">
                 <label className="space-y-2 text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   Question Count
                   <select
@@ -111,40 +199,45 @@ export default function InterviewSetup() {
 
               <div className="rounded-2xl border border-slate-200/90 bg-slate-50/90 p-4 sm:p-5 dark:border-white/10 dark:bg-slate-900/80">
                 <span className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 block mb-1.5">
-                  Interview Focus
+                  Interview Focus ({config.role})
                 </span>
                 <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
-                  RAG • Vector Databases • Prompt Engineering • Agentic AI • MCP • AI Deployment • Production AI
+                  {ROLE_FOCUS_TOPICS[config.role] || ROLE_FOCUS_TOPICS['Software Engineer']}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4 sm:p-5 dark:border-white/10 dark:bg-slate-900/70">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                    Your Cohort Journey
+                    {config.role} Preparation Journey
                   </span>
                   <span className="text-xs font-bold text-sky-700 dark:text-sky-300 bg-sky-500/10 px-2.5 py-1 rounded-lg">
-                    12 / 31 Days Completed
+                    Role-Specific Module Focus
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-1">
-                      Completed
+                      Target Competencies
                     </span>
                     <ul className="space-y-1 text-slate-600 dark:text-slate-300 font-medium">
-                      <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> RAG</li>
-                      <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Vector Databases</li>
-                      <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Prompt Engineering</li>
+                      {journeyData.completed.map((item) => (
+                        <li key={item} className="flex items-center gap-1.5">
+                          <span className="text-emerald-500 font-bold">✓</span> {item}
+                        </li>
+                      ))}
                     </ul>
                   </div>
                   <div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-1">
-                      Needs Assessment
+                      Assessment Focus
                     </span>
                     <ul className="space-y-1 text-slate-600 dark:text-slate-300 font-medium">
-                      <li className="flex items-center gap-1.5"><span className="text-amber-500 font-bold">•</span> MCP</li>
-                      <li className="flex items-center gap-1.5"><span className="text-amber-500 font-bold">•</span> AI Deployment</li>
+                      {journeyData.needsAssessment.map((item) => (
+                        <li key={item} className="flex items-center gap-1.5">
+                          <span className="text-amber-500 font-bold">•</span> {item}
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 </div>
@@ -192,9 +285,9 @@ export default function InterviewSetup() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-950 dark:text-white">Session Highlights</h3>
               <div className="mt-3 space-y-2.5">
                 {[
-                  { number: '01', title: 'Curriculum-driven AI questions' },
+                  { number: '01', title: 'Role-specific domain questions' },
                   { number: '02', title: 'Adaptive follow-ups based on your responses' },
-                  { number: '03', title: 'Live curriculum coverage tracking' },
+                  { number: '03', title: 'Live technical depth tracking' },
                   { number: '04', title: 'AI-powered evaluation & feedback' },
                 ].map((item) => (
                   <div key={item.number} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300 py-0.5">
