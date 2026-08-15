@@ -119,7 +119,9 @@ export default function createGeminiProvider(): AIProvider {
     },
 
     async evaluateAnswer(context: Record<string, any>): Promise<AIEvaluation> {
-      console.log('[AI Provider] Gemini - Evaluating candidate answer');
+      const modelName = getGeminiModel();
+      const hasApiKey = Boolean(getGeminiApiKey());
+      console.log(`[AI Provider] Gemini - Evaluating candidate answer | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey}`);
 
       try {
         const ai = getGeminiClient();
@@ -162,14 +164,16 @@ export default function createGeminiProvider(): AIProvider {
         };
       } catch (err: any) {
         const formatted = formatGeminiError(err);
-        console.error(`[Gemini Error] evaluateAnswer failed (Model "${getGeminiModel()}"): ${formatted}`);
+        console.error(`[Gemini Error] evaluateAnswer failed | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey} | Error:\n${formatted}`);
         throw new Error(`Gemini Provider Error: ${formatted}`);
       }
     },
 
     async generateFeedback(context: Record<string, any>): Promise<AIFeedback> {
       const role = String(context.candidate?.role ?? 'AI Engineer');
-      console.log(`[AI Provider] Gemini - Generating final feedback report for "${role}"`);
+      const modelName = getGeminiModel();
+      const hasApiKey = Boolean(getGeminiApiKey());
+      console.log(`[AI Provider] Gemini - Generating final feedback report for "${role}" | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey}`);
 
       try {
         const ai = getGeminiClient();
@@ -214,7 +218,7 @@ export default function createGeminiProvider(): AIProvider {
         };
       } catch (err: any) {
         const formatted = formatGeminiError(err);
-        console.error(`[Gemini Error] generateFeedback failed (Model "${getGeminiModel()}"): ${formatted}`);
+        console.error(`[Gemini Error] generateFeedback failed | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey} | Error:\n${formatted}`);
         throw new Error(`Gemini Provider Error: ${formatted}`);
       }
     },

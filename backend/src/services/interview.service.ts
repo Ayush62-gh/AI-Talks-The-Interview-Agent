@@ -104,6 +104,11 @@ export async function evaluateAndNext(sessionId: string, answer: string) {
   s.weakConcepts = s.weakConcepts ?? [];
   s.strongConcepts = s.strongConcepts ?? [];
 
+  if (!s.currentQuestion && s.askedQuestions.length > 0) {
+    const lastAsked = s.askedQuestions[s.askedQuestions.length - 1];
+    s.currentQuestion = { questionId: `q-restored-${Date.now()}`, text: lastAsked };
+  }
+
   const candidateTs = new Date().toISOString();
   s.messages.push({ sender: 'candidate', text: answer, timestamp: candidateTs });
   addMessageRecord(sessionId, 'candidate', answer, candidateTs, s.messages.length - 1);

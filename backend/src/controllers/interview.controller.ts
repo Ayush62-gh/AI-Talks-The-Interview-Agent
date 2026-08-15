@@ -55,8 +55,11 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
       if (candidatePayload && candidatePayload.role) {
         s = createSession(candidatePayload);
         s.sessionId = validation.value.sessionId;
-        if (Array.isArray((body as any).askedQuestions)) {
-          s.askedQuestions = (body as any).askedQuestions;
+        const askedArr = (body as any).askedQuestions;
+        if (Array.isArray(askedArr) && askedArr.length > 0) {
+          s.askedQuestions = askedArr;
+          const lastAsked = askedArr[askedArr.length - 1];
+          s.currentQuestion = { questionId: `q-restored-${Date.now()}`, text: lastAsked };
         }
         if (typeof (body as any).questionIndex === 'number') {
           s.progress = Math.max(0, (body as any).questionIndex - 1);
@@ -73,7 +76,7 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
     try {
       const result = await evaluateAndNext(validation.value.sessionId, validation.value.message);
       if (result.error) {
-        return res.status(500).json({ error: { code: 'AI_REQUEST_FAILED', message: 'AI processing failed' } });
+        return res.status(500).json({ error: { code: 'AI_REQUEST_FAILED', message: `AI processing failed: ${result.error}` } });
       }
 
       if (result.done) {
