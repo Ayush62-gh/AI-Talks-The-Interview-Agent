@@ -9,7 +9,7 @@ function getGeminiApiKey(): string {
 }
 
 function getGeminiModel(): string {
-  const raw = env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const raw = env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   return raw.trim().replace(/^['"]|['"]$/g, '');
 }
 
