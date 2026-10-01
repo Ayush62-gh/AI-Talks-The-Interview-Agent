@@ -72,6 +72,91 @@ function parseJSONResponse<T>(text: string): T {
   return JSON.parse(cleaned) as T;
 }
 
+export async function generateWithRetry(ai: GoogleGenAI, prompt: string, modelName: string, config: any): Promise<any> {
+  const fallbackModel = env.GEMINI_FALLBACK_MODEL || process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
+  const startTime = Date.now();
+  const TIME_CAP = 25000;
+  
+  let primary503Retries = 0;
+  let primary429Retries = 0;
+  let fallback503Retries = 0;
+  let useFallback = false;
+
+  while (true) {
+    if (Date.now() - startTime > TIME_CAP) {
+      throw { status: 503, message: 'AI Provider timeout (25s cap reached)' };
+    }
+
+    const currentModel = useFallback ? fallbackModel : modelName;
+
+    try {
+      return await ai.models.generateContent({
+        model: currentModel,
+        contents: prompt,
+        config,
+      });
+    } catch (err: any) {
+      const status = err?.status ?? err?.code ?? err?.response?.status;
+      const isTransient = status === 503 || status === 429 || status === 500 || 
+                          err?.message?.includes('ETIMEDOUT') || 
+                          err?.message?.includes('ECONNRESET');
+      const isFatal = status === 400 || status === 401 || status === 403 || status === 404;
+
+      if (isFatal) {
+        if (useFallback && status === 404) {
+          console.log(`[Gemini] fallback model ${currentModel} is not available for this key. Update GEMINI_FALLBACK_MODEL.`);
+        }
+        throw err;
+      }
+      
+      if (!isTransient) {
+        throw err;
+      }
+
+      let delayMs = 1000;
+
+      if (!useFallback) {
+        if (status === 503 || status === 500 || err?.message?.includes('ETIMEDOUT') || err?.message?.includes('ECONNRESET')) {
+          if (primary503Retries < 2) {
+            console.log(`[Gemini] retry ${primary503Retries + 1} after ${status}`);
+            delayMs = primary503Retries === 0 ? 1000 : 2000;
+            primary503Retries++;
+          } else {
+            console.log(`[Gemini] using fallback model ${fallbackModel}`);
+            useFallback = true;
+            continue;
+          }
+        } else if (status === 429) {
+          if (primary429Retries < 1) {
+            console.log(`[Gemini] retry ${primary429Retries + 1} after ${status}`);
+            delayMs = 1000;
+            primary429Retries++;
+          } else {
+            console.log(`[Gemini] using fallback model ${fallbackModel}`);
+            useFallback = true;
+            continue;
+          }
+        }
+      } else {
+        if (status === 503 || status === 500 || err?.message?.includes('ETIMEDOUT') || err?.message?.includes('ECONNRESET')) {
+          if (fallback503Retries < 2) {
+            console.log(`[Gemini] retry ${fallback503Retries + 1} after ${status}`);
+            delayMs = fallback503Retries === 0 ? 1000 : 2000;
+            fallback503Retries++;
+          } else {
+            throw err;
+          }
+        } else if (status === 429) {
+          throw err;
+        }
+      }
+
+      delayMs += Math.random() * 500;
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+}
+
 export default function createGeminiProvider(): AIProvider {
   return {
     async generateQuestion(context: Record<string, any>): Promise<AIQuestion> {
@@ -85,12 +170,8 @@ export default function createGeminiProvider(): AIProvider {
         const model = getGeminiModel();
         const prompt = buildQuestionPrompt(context);
 
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
+        const response = await generateWithRetry(ai, prompt, model, {
+          responseMimeType: 'application/json',
         });
 
         const responseText = response.text ?? '';
@@ -128,12 +209,8 @@ export default function createGeminiProvider(): AIProvider {
         const model = getGeminiModel();
         const prompt = buildEvaluationPrompt(context);
 
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
+        const response = await generateWithRetry(ai, prompt, model, {
+          responseMimeType: 'application/json',
         });
 
         const responseText = response.text ?? '';
@@ -180,12 +257,8 @@ export default function createGeminiProvider(): AIProvider {
         const model = getGeminiModel();
         const prompt = buildFeedbackPrompt(context);
 
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
+        const response = await generateWithRetry(ai, prompt, model, {
+          responseMimeType: 'application/json',
         });
 
         const responseText = response.text ?? '';

@@ -16,7 +16,7 @@ const apiBaseUrl =
 
 const apiClient = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 20000,
+  timeout: 60000,
 });
 
 function getInitialFallbackQuestion(role: string): string {

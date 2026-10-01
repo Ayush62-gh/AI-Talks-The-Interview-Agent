@@ -9,7 +9,9 @@
     "dev": "tsc && node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "check:rehydrate": "tsx scripts/rehydrate-check.ts",
+    "check:retry": "tsx scripts/retry-check.ts"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",

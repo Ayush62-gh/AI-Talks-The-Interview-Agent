@@ -8,6 +8,21 @@ import type {
   SubmitAnswerResponse,
 } from '../models/interview.types.js';
 
+function handleAIError(err: any, res: Response) {
+  const errMsg = err?.message || String(err);
+  console.error('[AI Provider Error]:', errMsg);
+  
+  if (errMsg.includes('503') || errMsg.includes('429')) {
+    return res.status(503).json({
+      error: { code: 'AI_TEMPORARILY_UNAVAILABLE', message: 'The AI service is busy right now. Please try again in a few seconds.' }
+    });
+  }
+
+  return res.status(502).json({
+    error: { code: 'AI_REQUEST_FAILED', message: 'The AI service returned an error. Please try again.' }
+  });
+}
+
 export async function postInterview(req: Request, res: Response, next: NextFunction) {
   try {
     const body = req.body as StartInterviewRequest | SubmitAnswerRequest;
@@ -37,8 +52,7 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
           };
           return res.status(201).json(resp);
         } catch (err: any) {
-          // if AI not configured or provider error
-          return res.status(503).json({ error: { code: 'ENGINE_NOT_CONFIGURED', message: err?.message ?? 'AI engine error' } });
+          return handleAIError(err, res);
         }
     }
 
@@ -53,8 +67,7 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
     if (!s) {
       const candidatePayload = (body as any).candidate;
       if (candidatePayload && candidatePayload.role) {
-        s = createSession(candidatePayload);
-        s.sessionId = validation.value.sessionId;
+        s = createSession(candidatePayload, validation.value.sessionId);
         const askedArr = (body as any).askedQuestions;
         if (Array.isArray(askedArr) && askedArr.length > 0) {
           s.askedQuestions = askedArr;
@@ -63,6 +76,10 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
         }
         if (typeof (body as any).questionIndex === 'number') {
           s.progress = Math.max(0, (body as any).questionIndex - 1);
+        }
+        const diff = (body as any).currentDifficulty;
+        if (diff === 'easy' || diff === 'medium' || diff === 'hard') {
+          s.currentDifficulty = diff;
         }
       } else {
         return res.status(404).json({ error: { code: 'SESSION_NOT_FOUND', message: 'Session not found' } });
@@ -87,7 +104,7 @@ export async function postInterview(req: Request, res: Response, next: NextFunct
       const resp: SubmitAnswerResponse = { nextQuestion: result.nextQuestion ? { questionId: result.nextQuestion.questionId, text: result.nextQuestion.text } : null, reply: null, progress: s.progress, done: false } as any;
       return res.json(resp);
     } catch (err: any) {
-      return res.status(503).json({ error: { code: 'ENGINE_NOT_CONFIGURED', message: err?.message ?? 'AI engine error' } });
+      return handleAIError(err, res);
     }
   } catch (err) {
     next(err);
