@@ -12,15 +12,16 @@ A modern React + Vite frontend for an AI interview agent. The UI is fully API-re
 - Tailwind CSS styling
 
 ## Project Structure
-- `src/components/` — reusable UI components
-- `src/pages/` — page-level views
-- `src/hooks/` — interview session state management
-- `src/services/` — API layer
-- `src/types/` — TypeScript interfaces
-- `src/utils/` — utility modules (if needed)
+- `frontend/src/components/` — reusable UI components
+- `frontend/src/pages/` — page-level views
+- `frontend/src/hooks/` — interview session state management
+- `frontend/src/services/` — API layer
+- `frontend/src/types/` — TypeScript interfaces
+- `frontend/src/utils/` — utility modules (if needed)
+- `backend/` — Express backend API
 
 ## API Integration
-Replace the mock API in `src/services/api.ts` with real HTTP calls to your backend.
+Replace the mock API in `frontend/src/services/api.ts` with real HTTP calls to your backend.
 
 Example API signatures:
 - `startInterview(candidate)` → `POST /api/interview`
@@ -29,11 +30,12 @@ Example API signatures:
 ## Setup
 1. Install dependencies:
    ```bash
-   npm install
+   npm run install:all
    ```
-2. Run development server:
+2. Run development servers:
    ```bash
-   npm run dev
+   npm run dev:backend
+   npm run dev:frontend
    ```
 3. Build for production:
    ```bash
@@ -43,4 +45,4 @@ Example API signatures:
 ## Notes
 - Interview logic is not hardcoded in UI.
 - Chat updates depend on API responses.
-- `services/api.ts` is the only file that needs replacement for a real backend.
+- `frontend/src/services/api.ts` is the only file that needs replacement for a real backend.

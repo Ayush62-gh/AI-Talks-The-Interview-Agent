@@ -1,9 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "npm --prefix frontend run build && npm --prefix backend run build",
+  "installCommand": "npm --prefix frontend install && npm --prefix backend install",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index.ts"
     },
     {
       "source": "/(.*)",
