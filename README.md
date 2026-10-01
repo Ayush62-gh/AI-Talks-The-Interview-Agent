@@ -34,8 +34,13 @@ Example API signatures:
    ```
 2. Run development servers:
    ```bash
-   npm run dev:backend
-   npm run dev:frontend
+   # Terminal 1 (Backend)
+   cd backend
+   npm run dev
+
+   # Terminal 2 (Frontend)
+   cd frontend
+   npm run dev
    ```
 3. Build for production:
    ```bash
