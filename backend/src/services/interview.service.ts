@@ -2,6 +2,7 @@ import { InterviewSession, CandidatePayload, InterviewEvaluation, InterviewFeedb
 import { saveSession, getSession } from '../store/interview.store.js';
 import { getAIProvider } from '../providers/index.js';
 import { addMessageRecord, markSessionCompleted, saveEvaluationRecord, saveFeedbackRecord } from '../repositories/interview.repository.js';
+import { buildFeedbackScores, buildMetrics } from './scoring.js';
 
 export { getSession } from '../store/interview.store.js';
 
@@ -169,22 +170,43 @@ export async function evaluateAndNext(sessionId: string, answer: string) {
 
   if (s.progress >= s.questionCount) {
     s.status = 'completed';
+    
+    if (!s.evaluations || s.evaluations.length === 0) {
+      throw new Error('Cannot generate feedback: no evaluations were recorded during the session.');
+    }
+
+    const scores = buildFeedbackScores(s.evaluations);
+    const metrics = buildMetrics(s.evaluations, s.questionCount);
+
     const feedbackPayload = await ai.generateFeedback({
       candidate: s.candidate,
       history: s.messages,
       evaluations: s.evaluations,
     });
 
+    let finalSummary = feedbackPayload.summary;
+    if (!finalSummary) {
+      finalSummary = `Executive Evaluation Report for ${s.candidate.role}. Score: ${scores.overallScore}/100.`;
+    }
+
+    if (s.evaluations.length < s.progress) {
+      metrics.answeredQuestions = s.progress;
+      finalSummary += ` (Note: Only ${s.evaluations.length} out of ${s.progress} answers were successfully evaluated.)`;
+    }
+
     const feedback: InterviewFeedback = {
-      score: feedbackPayload.overallScore,
-      summary: feedbackPayload.summary,
+      score: scores.overallScore,
+      finalScore: scores.overallScore,
+      performanceCategory: scores.performanceCategory,
+      summary: finalSummary,
       categories: {
-        technicalKnowledge: feedbackPayload.technicalScore,
-        problemSolving: feedbackPayload.problemSolvingScore,
-        communicationSkills: feedbackPayload.communicationScore,
-        answerQuality: feedbackPayload.technicalScore,
-        confidence: feedbackPayload.communicationScore,
+        technicalKnowledge: scores.technicalScore,
+        problemSolving: scores.problemSolvingScore,
+        communicationSkills: scores.communicationScore,
+        answerQuality: scores.relevanceScore,
+        confidence: scores.overallScore,
       },
+      metrics: metrics,
       strengths: feedbackPayload.strengths,
       weaknesses: feedbackPayload.weaknesses,
       suggestions: feedbackPayload.improvementAreas,

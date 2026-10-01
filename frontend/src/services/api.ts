@@ -328,172 +328,7 @@ function getFallbackNextQuestion(role: string, askedQuestions: string[], current
   return bank[(currentIdx - 1) % bank.length];
 }
 
-export function generateDynamicFeedbackFromSession(roleName: string = 'AI Engineer'): InterviewFeedback {
-  try {
-    const raw = typeof window !== 'undefined' ? window.localStorage.getItem('aiInterviewFullSession') : null;
-    if (raw) {
-      const s = JSON.parse(raw);
-      const questions: any[] = s.questions || [];
-      const answers: Record<string, string> = s.answers || {};
 
-      let sumWeighted = 0;
-      let sumWeights = 0;
-      let sumAcc = 0;
-      let sumRel = 0;
-      let sumDep = 0;
-      let sumCla = 0;
-      let evaluatedCount = 0;
-
-      const questionEvaluations: QuestionEvaluationDetail[] = [];
-      const strengths: string[] = [];
-      const weaknesses: string[] = [];
-      const coveredTopics: string[] = [];
-      const strongTopics: string[] = [];
-      const weakTopics: string[] = [];
-
-      questions.forEach((q) => {
-        const ans = answers[q.id] || q.answer || '';
-        const topicName = q.topic || 'Role Fundamentals';
-        if (!coveredTopics.includes(topicName)) coveredTopics.push(topicName);
-
-        if (ans) {
-          const evalRes = evaluateAnswerQuality(q.question || '', ans, roleName, 'medium');
-          sumWeighted += evalRes.weightedScore;
-          sumWeights += evalRes.difficultyWeight;
-          sumAcc += evalRes.accuracy;
-          sumRel += evalRes.relevance;
-          sumDep += evalRes.depth;
-          sumCla += evalRes.clarity;
-          evaluatedCount++;
-
-          questionEvaluations.push({
-            questionId: q.id,
-            questionText: q.question || '',
-            answerText: ans,
-            topic: topicName,
-            difficulty: 'medium',
-            difficultyWeight: evalRes.difficultyWeight,
-            accuracy: evalRes.accuracy,
-            relevance: evalRes.relevance,
-            depth: evalRes.depth,
-            clarity: evalRes.clarity,
-            baseScore: evalRes.baseScore,
-            weightedScore: evalRes.weightedScore,
-            assessment: evalRes.feedbackText,
-            strengths: evalRes.isWrong ? [] : [`Understands ${topicName}`],
-            weaknesses: evalRes.isWrong ? [`Needs improvement on ${topicName}`] : [],
-            missingConcepts: evalRes.isWrong ? [topicName] : [],
-          });
-
-          if (evalRes.isWrong) {
-            weaknesses.push(`Struggled with ${q.question?.slice(0, 35)}...`);
-            if (!weakTopics.includes(topicName)) weakTopics.push(topicName);
-          } else {
-            strengths.push(`Good grasp on ${q.question?.slice(0, 35)}...`);
-            if (!strongTopics.includes(topicName)) strongTopics.push(topicName);
-          }
-        }
-      });
-
-      if (evaluatedCount > 0 && sumWeights > 0) {
-        const finalScore10 = sumWeighted / sumWeights;
-        const finalScore = Math.max(0, Math.min(100, Math.round(finalScore10 * 10)));
-
-        let performanceCategory: PerformanceCategory = 'Needs Improvement';
-        if (finalScore >= 90) performanceCategory = 'Exceptional';
-        else if (finalScore >= 80) performanceCategory = 'Strong';
-        else if (finalScore >= 70) performanceCategory = 'Good';
-        else if (finalScore >= 60) performanceCategory = 'Average';
-        else if (finalScore >= 50) performanceCategory = 'Needs Improvement';
-        else performanceCategory = 'Weak';
-
-        const avgAccuracy = Number((sumAcc / evaluatedCount).toFixed(1));
-        const avgRelevance = Number((sumRel / evaluatedCount).toFixed(1));
-        const avgDepth = Number((sumDep / evaluatedCount).toFixed(1));
-        const avgClarity = Number((sumCla / evaluatedCount).toFixed(1));
-
-        const curriculumCoverage = [
-          { area: 'RAG & Retrieval (Days 8–15)', covered: true, dayCount: 4, daysList: [8, 9, 10, 13] },
-          { area: 'Vector Databases (Days 6–7)', covered: true, dayCount: 2, daysList: [6, 7] },
-          { area: 'Prompt Engineering (Days 1–5)', covered: true, dayCount: 3, daysList: [1, 2, 4] },
-          { area: 'Agentic AI & Memory (Days 16–22)', covered: true, dayCount: 3, daysList: [16, 17, 21] },
-          { area: 'Model Context Protocol (Days 23–27)', covered: true, dayCount: 2, daysList: [23, 24] },
-          { area: 'Production AI & Deployment (Days 28–31)', covered: true, dayCount: 2, daysList: [28, 29] },
-        ];
-
-        return {
-          score: finalScore,
-          finalScore,
-          performanceCategory,
-          summary: `31-Day AI Cohort Assessment Report: Evaluated ${evaluatedCount} technical questions across 6 curriculum modules. Final Score: ${finalScore}/100 (${performanceCategory}). Accuracy: ${avgAccuracy}/10, Relevance: ${avgRelevance}/10, Depth: ${avgDepth}/10, Clarity: ${avgClarity}/10. ${
-            finalScore >= 70
-              ? 'Candidate demonstrated solid technical understanding across target AI Cohort topics.'
-              : 'Candidate submitted incomplete or inaccurate responses across several questions.'
-          }`,
-          categories: {
-            technicalKnowledge: Math.round(avgAccuracy * 10),
-            problemSolving: Math.round(avgDepth * 10),
-            communicationSkills: Math.round(avgClarity * 10),
-            answerQuality: Math.round(avgRelevance * 10),
-            confidence: Math.round(finalScore),
-          },
-          metrics: {
-            totalQuestions: s.questionCount || evaluatedCount,
-            answeredQuestions: evaluatedCount,
-            coveredDaysCount: 6,
-            coveredDaysList: [1, 4, 7, 8, 13, 16, 23, 28],
-            averageAccuracy: avgAccuracy,
-            averageRelevance: avgRelevance,
-            averageDepth: avgDepth,
-            averageClarity: avgClarity,
-            sumWeightedScores: Number(sumWeighted.toFixed(2)),
-            sumDifficultyWeights: Number(sumWeights.toFixed(2)),
-          },
-          questionEvaluations,
-          curriculumCoverage,
-          coveredTopics,
-          strongTopics,
-          weakTopics,
-          strengths: strengths.length > 0 ? Array.from(new Set(strengths)).slice(0, 4) : ['Attempted all interview questions'],
-          weaknesses: weaknesses.length > 0 ? Array.from(new Set(weaknesses)).slice(0, 4) : ['Could provide deeper architectural depth'],
-          suggestions: [
-            'Review 31-Day AI Cohort curriculum modules (RAG, Vector Search, MCP, Agentic Workflows)',
-            'Focus on technical accuracy and providing concrete reasoning in explanations',
-          ],
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('Error calculating session feedback:', err);
-  }
-
-  return {
-    score: 35,
-    finalScore: 35,
-    performanceCategory: 'Weak',
-    summary: 'Incomplete or unverified response data. Candidate requires further technical review.',
-    categories: {
-      technicalKnowledge: 35,
-      problemSolving: 30,
-      communicationSkills: 40,
-      answerQuality: 35,
-      confidence: 35,
-    },
-    metrics: {
-      totalQuestions: 1,
-      answeredQuestions: 0,
-      averageAccuracy: 3.5,
-      averageRelevance: 3.5,
-      averageDepth: 3.0,
-      averageClarity: 4.0,
-      sumWeightedScores: 3.5,
-      sumDifficultyWeights: 1.0,
-    },
-    strengths: ['Started session setup'],
-    weaknesses: ['Did not complete sufficient verified technical answers'],
-    suggestions: ['Complete all questions with detailed technical answers'],
-  };
-}
 
 export async function submitAnswer(
   sessionId: string,
@@ -527,13 +362,15 @@ export async function submitAnswer(
     const isDone = Boolean(data.done) || dataProgress >= total || currentIdx >= total;
 
     if (isDone) {
-      const feedbackPayload = data.feedback || generateDynamicFeedbackFromSession(role);
+      if (!data.feedback) {
+        throw new Error('No feedback received from the server.');
+      }
       return {
         nextQuestion: null,
         reply: 'Interview completed successfully!',
         progress: total,
         done: true,
-        feedback: feedbackPayload,
+        feedback: data.feedback,
       };
     }
 
