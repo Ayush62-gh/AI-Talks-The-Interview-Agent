@@ -11,8 +11,8 @@ export function generateSessionId(): string {
   return `S-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function createSession(candidate: CandidatePayload): InterviewSession {
-  const sessionId = generateSessionId();
+export function createSession(candidate: CandidatePayload, explicitSessionId?: string): InterviewSession {
+  const sessionId = explicitSessionId ?? generateSessionId();
   const session: InterviewSession = {
     sessionId,
     candidate,
@@ -110,8 +110,11 @@ export async function evaluateAndNext(sessionId: string, answer: string) {
   }
 
   const candidateTs = new Date().toISOString();
-  s.messages.push({ sender: 'candidate', text: answer, timestamp: candidateTs });
-  addMessageRecord(sessionId, 'candidate', answer, candidateTs, s.messages.length - 1);
+  const lastMsg = s.messages.length > 0 ? s.messages[s.messages.length - 1] : null;
+  if (!lastMsg || lastMsg.sender !== 'candidate' || lastMsg.text !== answer) {
+    s.messages.push({ sender: 'candidate', text: answer, timestamp: candidateTs });
+    addMessageRecord(sessionId, 'candidate', answer, candidateTs, s.messages.length - 1);
+  }
 
   const evalCtx = {
     candidate: s.candidate,

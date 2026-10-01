@@ -233,7 +233,11 @@ export function InterviewProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(true);
       setError(null);
-      appendMessage(createMessage('candidate', answer, 'answer'));
+      
+      const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+      if (!lastMsg || lastMsg.sender !== 'candidate' || lastMsg.text !== answer) {
+        appendMessage(createMessage('candidate', answer, 'answer'));
+      }
 
       try {
         const s = sessionData;

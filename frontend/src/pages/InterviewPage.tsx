@@ -47,11 +47,10 @@ export default function InterviewPage() {
 
   const handleRetry = async () => {
     setOpenError(false);
-    if (!draftMessage.trim()) {
-      return;
+    const lastCandidateMsg = [...messages].reverse().find(m => m.sender === 'candidate');
+    if (lastCandidateMsg) {
+      await submitAnswer(lastCandidateMsg.text);
     }
-    await submitAnswer(draftMessage.trim());
-    setDraftMessage('');
   };
 
   const handleSubmit = async (event: FormEvent) => {
