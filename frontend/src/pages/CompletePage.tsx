@@ -79,20 +79,20 @@ export default function CompletePage() {
 
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Accuracy (50%)</span>
-              <span className="mt-1 block text-lg font-bold text-sky-600 dark:text-sky-400">{feedback?.metrics?.averageAccuracy ?? remote?.metrics?.averageAccuracy ?? 0}/10</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Accuracy</span>
+              <span className="mt-1 block text-lg font-bold text-sky-600 dark:text-sky-400">{(feedback?.metrics?.averageAccuracy ?? remote?.metrics?.averageAccuracy) != null ? `${feedback?.metrics?.averageAccuracy ?? remote?.metrics?.averageAccuracy}/10` : 'n/a'}</span>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Relevance (20%)</span>
-              <span className="mt-1 block text-lg font-bold text-emerald-600 dark:text-emerald-400">{feedback?.metrics?.averageRelevance ?? remote?.metrics?.averageRelevance ?? 0}/10</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Relevance</span>
+              <span className="mt-1 block text-lg font-bold text-emerald-600 dark:text-emerald-400">{(feedback?.metrics?.averageRelevance ?? remote?.metrics?.averageRelevance) != null ? `${feedback?.metrics?.averageRelevance ?? remote?.metrics?.averageRelevance}/10` : 'n/a'}</span>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Depth (20%)</span>
-              <span className="mt-1 block text-lg font-bold text-indigo-600 dark:text-indigo-400">{feedback?.metrics?.averageDepth ?? remote?.metrics?.averageDepth ?? 0}/10</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Depth</span>
+              <span className="mt-1 block text-lg font-bold text-indigo-600 dark:text-indigo-400">{(feedback?.metrics?.averageDepth ?? remote?.metrics?.averageDepth) != null ? `${feedback?.metrics?.averageDepth ?? remote?.metrics?.averageDepth}/10` : 'n/a'}</span>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center dark:border-white/10 dark:bg-slate-900/60">
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Clarity (10%)</span>
-              <span className="mt-1 block text-lg font-bold text-purple-600 dark:text-purple-400">{feedback?.metrics?.averageClarity ?? remote?.metrics?.averageClarity ?? 0}/10</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Clarity</span>
+              <span className="mt-1 block text-lg font-bold text-purple-600 dark:text-purple-400">{(feedback?.metrics?.averageClarity ?? remote?.metrics?.averageClarity) != null ? `${feedback?.metrics?.averageClarity ?? remote?.metrics?.averageClarity}/10` : 'n/a'}</span>
             </div>
           </div>
 

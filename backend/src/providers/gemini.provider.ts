@@ -209,31 +209,43 @@ export default function createGeminiProvider(): AIProvider {
         const model = getGeminiModel();
         const prompt = buildEvaluationPrompt(context);
 
-        const response = await generateWithRetry(ai, prompt, model, {
-          responseMimeType: 'application/json',
-        });
+        let parsed: any = {};
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          const response = await generateWithRetry(ai, prompt, model, {
+            responseMimeType: 'application/json',
+          });
+          const responseText = response.text ?? '';
+          if (!responseText) {
+            throw new Error('Received empty evaluation response from Gemini API');
+          }
+          parsed = parseJSONResponse<{
+            correctness?: number;
+            relevance?: number;
+            technicalDepth?: number;
+            communication?: number;
+            strengths?: string[];
+            weaknesses?: string[];
+            missingConcepts?: string[];
+            assessment?: string;
+          }>(responseText);
 
-        const responseText = response.text ?? '';
-        if (!responseText) {
-          throw new Error('Received empty evaluation response from Gemini API');
+          const { correctness, relevance, technicalDepth, communication } = parsed;
+          if (Number.isFinite(correctness) && Number.isFinite(relevance) && Number.isFinite(technicalDepth) && Number.isFinite(communication)) {
+            break;
+          }
+          if (attempt === 2) {
+            throw new Error('Gemini API returned invalid numeric scores for evaluation after retry.');
+          }
+          console.log('[Gemini] Retrying evaluation due to missing/invalid numeric scores');
         }
 
-        const parsed = parseJSONResponse<{
-          correctness?: number;
-          relevance?: number;
-          technicalDepth?: number;
-          communication?: number;
-          strengths?: string[];
-          weaknesses?: string[];
-          missingConcepts?: string[];
-          assessment?: string;
-        }>(responseText);
+        const clamp = (val: number) => Math.max(0, Math.min(100, Number(val)));
 
         return {
-          correctness: Number(parsed.correctness ?? 70),
-          relevance: Number(parsed.relevance ?? 70),
-          technicalDepth: Number(parsed.technicalDepth ?? 70),
-          communication: Number(parsed.communication ?? 70),
+          correctness: clamp(parsed.correctness),
+          relevance: clamp(parsed.relevance),
+          technicalDepth: clamp(parsed.technicalDepth),
+          communication: clamp(parsed.communication),
           strengths: Array.isArray(parsed.strengths) ? parsed.strengths : ['Demonstrated role technical understanding'],
           weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
           missingConcepts: Array.isArray(parsed.missingConcepts) ? parsed.missingConcepts : [],
@@ -267,10 +279,6 @@ export default function createGeminiProvider(): AIProvider {
         }
 
         const parsed = parseJSONResponse<{
-          overallScore?: number;
-          technicalScore?: number;
-          communicationScore?: number;
-          problemSolvingScore?: number;
           strengths?: string[];
           weaknesses?: string[];
           improvementAreas?: string[];
@@ -279,16 +287,12 @@ export default function createGeminiProvider(): AIProvider {
         }>(responseText);
 
         return {
-          overallScore: Number(parsed.overallScore ?? 75),
-          technicalScore: Number(parsed.technicalScore ?? 75),
-          communicationScore: Number(parsed.communicationScore ?? 75),
-          problemSolvingScore: Number(parsed.problemSolvingScore ?? 75),
-          strengths: Array.isArray(parsed.strengths) ? parsed.strengths : ['Completed technical interview session'],
+          strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
           weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
-          improvementAreas: Array.isArray(parsed.improvementAreas) ? parsed.improvementAreas : ['Review core domain topics'],
-          recommendedTopics: Array.isArray(parsed.recommendedTopics) ? parsed.recommendedTopics : [role],
-          summary: String(parsed.summary || `Executive Evaluation Report for ${role}.`),
-        };
+          improvementAreas: Array.isArray(parsed.improvementAreas) ? parsed.improvementAreas : [],
+          recommendedTopics: Array.isArray(parsed.recommendedTopics) ? parsed.recommendedTopics : [],
+          summary: String(parsed.summary || ''),
+        } as any;
       } catch (err: any) {
         const formatted = formatGeminiError(err);
         console.error(`[Gemini Error] generateFeedback failed | GEMINI_MODEL=${modelName} | API key configured: ${hasApiKey} | Error:\n${formatted}`);
